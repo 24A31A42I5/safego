@@ -9,13 +9,13 @@ export const Route = createFileRoute("/department")({
   component: DeptLayout,
 });
 
-const navItems = [
+const navItems: { to: string; label: string; icon: typeof Home; exact?: boolean }[] = [
   { to: "/department", label: "Dashboard", icon: Home, exact: true },
   { to: "/department/sos", label: "SOS Reports", icon: Siren },
   { to: "/department/map", label: "Map Management", icon: Map },
   { to: "/department/lost", label: "Lost & Found", icon: UserSearch },
   { to: "/department/incidents", label: "Incidents", icon: AlertTriangle },
-] as const;
+];
 
 function DeptLayout() {
   const { profile, role, loading, signOut } = useAuth();
