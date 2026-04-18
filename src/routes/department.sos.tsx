@@ -1,0 +1,130 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Phone, MapPin, Calendar, AlertTriangle, CheckCircle2 } from "lucide-react";
+import type { Database } from "@/integrations/supabase/types";
+import { formatDistanceToNow } from "@/lib/format";
+
+export const Route = createFileRoute("/department/sos")({
+  component: SosReports,
+});
+
+type Alert = Database["public"]["Tables"]["sos_alerts"]["Row"];
+
+function SosReports() {
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase
+        .from("sos_alerts")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (data) setAlerts(data);
+    };
+    load();
+    const ch = supabase
+      .channel("dept-sos")
+      .on("postgres_changes", { event: "*", schema: "public", table: "sos_alerts" }, () =>
+        load()
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, []);
+
+  const updateStatus = async (id: string, status: Alert["status"]) => {
+    await supabase.from("sos_alerts").update({ status }).eq("id", id);
+  };
+
+  return (
+    <div className="space-y-4">
+      <h1 className="text-2xl font-bold">SOS &amp; Zone Alerts</h1>
+      <p className="text-sm text-muted-foreground">{alerts.length} total alerts</p>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        {alerts.map((a) => (
+          <Card
+            key={a.id}
+            className={`border-l-4 ${
+              a.status === "critical"
+                ? "border-l-destructive"
+                : a.status === "warning"
+                  ? "border-l-amber-500"
+                  : "border-l-emerald-500"
+            }`}
+          >
+            <CardHeader className="pb-2">
+              <div className="flex items-start justify-between gap-2">
+                <CardTitle className="flex items-center gap-2 text-base capitalize">
+                  <AlertTriangle className="h-4 w-4" />
+                  {a.alert_type.replace("_", " ")}
+                </CardTitle>
+                <Badge
+                  className="capitalize"
+                  variant={
+                    a.status === "critical"
+                      ? "destructive"
+                      : a.status === "resolved"
+                        ? "secondary"
+                        : "default"
+                  }
+                >
+                  {a.status}
+                </Badge>
+              </div>
+              <CardDescription className="font-mono text-xs">
+                {a.id.slice(0, 8)}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div className="font-semibold">{a.tourist_name}</div>
+              {a.tourist_phone && (
+                <div className="flex items-center gap-1 text-muted-foreground">
+                  <Phone className="h-3 w-3" /> {a.tourist_phone}
+                </div>
+              )}
+              <div className="flex items-center gap-1 text-muted-foreground">
+                <MapPin className="h-3 w-3" />
+                {a.message ?? "Location"} ({a.lat.toFixed(4)}, {a.lng.toFixed(4)})
+              </div>
+              <div className="flex items-center gap-1 text-muted-foreground">
+                <Calendar className="h-3 w-3" /> {formatDistanceToNow(a.created_at)}
+              </div>
+              <div className="flex flex-wrap gap-2 pt-2">
+                <Button asChild size="sm" variant="outline">
+                  <a
+                    href={`https://www.openstreetmap.org/?mlat=${a.lat}&mlon=${a.lng}#map=17/${a.lat}/${a.lng}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <MapPin className="mr-1 h-3 w-3" /> View on Map
+                  </a>
+                </Button>
+                {a.tourist_phone && (
+                  <Button asChild size="sm" variant="outline">
+                    <a href={`tel:${a.tourist_phone}`}>
+                      <Phone className="mr-1 h-3 w-3" /> Call
+                    </a>
+                  </Button>
+                )}
+                {a.status !== "resolved" && (
+                  <Button size="sm" onClick={() => updateStatus(a.id, "resolved")}>
+                    <CheckCircle2 className="mr-1 h-3 w-3" /> Completed
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+        {alerts.length === 0 && (
+          <p className="text-sm text-muted-foreground">No alerts yet.</p>
+        )}
+      </div>
+    </div>
+  );
+}
