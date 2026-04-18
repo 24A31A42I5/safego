@@ -14,16 +14,178 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      lost_reports: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          missing_name: string
+          photo_url: string | null
+          reporter_id: string
+          reporter_name: string
+          reporter_phone: string | null
+          status: Database["public"]["Enums"]["report_status"]
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          missing_name: string
+          photo_url?: string | null
+          reporter_id: string
+          reporter_name: string
+          reporter_phone?: string | null
+          status?: Database["public"]["Enums"]["report_status"]
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          missing_name?: string
+          photo_url?: string | null
+          reporter_id?: string
+          reporter_name?: string
+          reporter_phone?: string | null
+          status?: Database["public"]["Enums"]["report_status"]
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          department_type: string | null
+          digital_id: string
+          email: string
+          emergency_contact: string | null
+          full_name: string
+          id: string
+          phone: string | null
+        }
+        Insert: {
+          created_at?: string
+          department_type?: string | null
+          digital_id: string
+          email: string
+          emergency_contact?: string | null
+          full_name: string
+          id: string
+          phone?: string | null
+        }
+        Update: {
+          created_at?: string
+          department_type?: string | null
+          digital_id?: string
+          email?: string
+          emergency_contact?: string | null
+          full_name?: string
+          id?: string
+          phone?: string | null
+        }
+        Relationships: []
+      }
+      sos_alerts: {
+        Row: {
+          alert_type: Database["public"]["Enums"]["alert_type"]
+          created_at: string
+          id: string
+          lat: number
+          lng: number
+          message: string | null
+          status: Database["public"]["Enums"]["alert_status"]
+          tourist_id: string
+          tourist_name: string
+          tourist_phone: string | null
+        }
+        Insert: {
+          alert_type?: Database["public"]["Enums"]["alert_type"]
+          created_at?: string
+          id?: string
+          lat: number
+          lng: number
+          message?: string | null
+          status?: Database["public"]["Enums"]["alert_status"]
+          tourist_id: string
+          tourist_name: string
+          tourist_phone?: string | null
+        }
+        Update: {
+          alert_type?: Database["public"]["Enums"]["alert_type"]
+          created_at?: string
+          id?: string
+          lat?: number
+          lng?: number
+          message?: string | null
+          status?: Database["public"]["Enums"]["alert_status"]
+          tourist_id?: string
+          tourist_name?: string
+          tourist_phone?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      zones: {
+        Row: {
+          coordinates: Json
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          zone_type: Database["public"]["Enums"]["zone_type"]
+        }
+        Insert: {
+          coordinates: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          zone_type: Database["public"]["Enums"]["zone_type"]
+        }
+        Update: {
+          coordinates?: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          zone_type?: Database["public"]["Enums"]["zone_type"]
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      alert_status: "critical" | "warning" | "resolved"
+      alert_type: "sos" | "zone_entry"
+      app_role: "tourist" | "department"
+      report_status: "active" | "found"
+      zone_type: "safe" | "caution" | "danger"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +312,12 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      alert_status: ["critical", "warning", "resolved"],
+      alert_type: ["sos", "zone_entry"],
+      app_role: ["tourist", "department"],
+      report_status: ["active", "found"],
+      zone_type: ["safe", "caution", "danger"],
+    },
   },
 } as const
