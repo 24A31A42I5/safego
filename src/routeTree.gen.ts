@@ -9,38 +9,180 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TouristRouteImport } from './routes/tourist'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as DepartmentRouteImport } from './routes/department'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DepartmentIndexRouteImport } from './routes/department.index'
+import { Route as DepartmentSosRouteImport } from './routes/department.sos'
+import { Route as DepartmentMapRouteImport } from './routes/department.map'
+import { Route as DepartmentLostRouteImport } from './routes/department.lost'
+import { Route as DepartmentIncidentsRouteImport } from './routes/department.incidents'
 
+const TouristRoute = TouristRouteImport.update({
+  id: '/tourist',
+  path: '/tourist',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DepartmentRoute = DepartmentRouteImport.update({
+  id: '/department',
+  path: '/department',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DepartmentIndexRoute = DepartmentIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DepartmentRoute,
+} as any)
+const DepartmentSosRoute = DepartmentSosRouteImport.update({
+  id: '/sos',
+  path: '/sos',
+  getParentRoute: () => DepartmentRoute,
+} as any)
+const DepartmentMapRoute = DepartmentMapRouteImport.update({
+  id: '/map',
+  path: '/map',
+  getParentRoute: () => DepartmentRoute,
+} as any)
+const DepartmentLostRoute = DepartmentLostRouteImport.update({
+  id: '/lost',
+  path: '/lost',
+  getParentRoute: () => DepartmentRoute,
+} as any)
+const DepartmentIncidentsRoute = DepartmentIncidentsRouteImport.update({
+  id: '/incidents',
+  path: '/incidents',
+  getParentRoute: () => DepartmentRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/department': typeof DepartmentRouteWithChildren
+  '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
+  '/tourist': typeof TouristRoute
+  '/department/incidents': typeof DepartmentIncidentsRoute
+  '/department/lost': typeof DepartmentLostRoute
+  '/department/map': typeof DepartmentMapRoute
+  '/department/sos': typeof DepartmentSosRoute
+  '/department/': typeof DepartmentIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
+  '/tourist': typeof TouristRoute
+  '/department/incidents': typeof DepartmentIncidentsRoute
+  '/department/lost': typeof DepartmentLostRoute
+  '/department/map': typeof DepartmentMapRoute
+  '/department/sos': typeof DepartmentSosRoute
+  '/department': typeof DepartmentIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/department': typeof DepartmentRouteWithChildren
+  '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
+  '/tourist': typeof TouristRoute
+  '/department/incidents': typeof DepartmentIncidentsRoute
+  '/department/lost': typeof DepartmentLostRoute
+  '/department/map': typeof DepartmentMapRoute
+  '/department/sos': typeof DepartmentSosRoute
+  '/department/': typeof DepartmentIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/department'
+    | '/login'
+    | '/signup'
+    | '/tourist'
+    | '/department/incidents'
+    | '/department/lost'
+    | '/department/map'
+    | '/department/sos'
+    | '/department/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/login'
+    | '/signup'
+    | '/tourist'
+    | '/department/incidents'
+    | '/department/lost'
+    | '/department/map'
+    | '/department/sos'
+    | '/department'
+  id:
+    | '__root__'
+    | '/'
+    | '/department'
+    | '/login'
+    | '/signup'
+    | '/tourist'
+    | '/department/incidents'
+    | '/department/lost'
+    | '/department/map'
+    | '/department/sos'
+    | '/department/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DepartmentRoute: typeof DepartmentRouteWithChildren
+  LoginRoute: typeof LoginRoute
+  SignupRoute: typeof SignupRoute
+  TouristRoute: typeof TouristRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/tourist': {
+      id: '/tourist'
+      path: '/tourist'
+      fullPath: '/tourist'
+      preLoaderRoute: typeof TouristRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/department': {
+      id: '/department'
+      path: '/department'
+      fullPath: '/department'
+      preLoaderRoute: typeof DepartmentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,21 +190,71 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/department/': {
+      id: '/department/'
+      path: '/'
+      fullPath: '/department/'
+      preLoaderRoute: typeof DepartmentIndexRouteImport
+      parentRoute: typeof DepartmentRoute
+    }
+    '/department/sos': {
+      id: '/department/sos'
+      path: '/sos'
+      fullPath: '/department/sos'
+      preLoaderRoute: typeof DepartmentSosRouteImport
+      parentRoute: typeof DepartmentRoute
+    }
+    '/department/map': {
+      id: '/department/map'
+      path: '/map'
+      fullPath: '/department/map'
+      preLoaderRoute: typeof DepartmentMapRouteImport
+      parentRoute: typeof DepartmentRoute
+    }
+    '/department/lost': {
+      id: '/department/lost'
+      path: '/lost'
+      fullPath: '/department/lost'
+      preLoaderRoute: typeof DepartmentLostRouteImport
+      parentRoute: typeof DepartmentRoute
+    }
+    '/department/incidents': {
+      id: '/department/incidents'
+      path: '/incidents'
+      fullPath: '/department/incidents'
+      preLoaderRoute: typeof DepartmentIncidentsRouteImport
+      parentRoute: typeof DepartmentRoute
+    }
   }
 }
 
+interface DepartmentRouteChildren {
+  DepartmentIncidentsRoute: typeof DepartmentIncidentsRoute
+  DepartmentLostRoute: typeof DepartmentLostRoute
+  DepartmentMapRoute: typeof DepartmentMapRoute
+  DepartmentSosRoute: typeof DepartmentSosRoute
+  DepartmentIndexRoute: typeof DepartmentIndexRoute
+}
+
+const DepartmentRouteChildren: DepartmentRouteChildren = {
+  DepartmentIncidentsRoute: DepartmentIncidentsRoute,
+  DepartmentLostRoute: DepartmentLostRoute,
+  DepartmentMapRoute: DepartmentMapRoute,
+  DepartmentSosRoute: DepartmentSosRoute,
+  DepartmentIndexRoute: DepartmentIndexRoute,
+}
+
+const DepartmentRouteWithChildren = DepartmentRoute._addFileChildren(
+  DepartmentRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DepartmentRoute: DepartmentRouteWithChildren,
+  LoginRoute: LoginRoute,
+  SignupRoute: SignupRoute,
+  TouristRoute: TouristRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
