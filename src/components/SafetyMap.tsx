@@ -28,6 +28,7 @@ interface SafetyMapProps {
   height?: string;
   panTo?: [number, number] | null;
   onMapClick?: (latlng: [number, number]) => void;
+  cursor?: string;
   children?: React.ReactNode;
 }
 
