@@ -118,6 +118,34 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
   }
+
+  /* Cursor affordances */
+  button,
+  [role="button"],
+  a,
+  summary,
+  label[for],
+  select {
+    cursor: pointer;
+  }
+  button:disabled,
+  button[disabled],
+  [role="button"][aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="number"],
+  input[type="url"],
+  textarea {
+    cursor: text;
+  }
+  input[type="file"] {
+    cursor: pointer;
+  }
 }
 
 /* Leaflet z-index fixes */
@@ -133,3 +161,6 @@
 .leaflet-bottom {
   z-index: 2 !important;
 }
+.leaflet-grab { cursor: grab; }
+.leaflet-dragging .leaflet-grab { cursor: grabbing; }
+.leaflet-interactive { cursor: pointer; }

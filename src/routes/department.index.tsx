@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/table";
 import type { Database } from "@/integrations/supabase/types";
 import { formatDistanceToNow } from "@/lib/format";
-import { Phone, MapPin } from "lucide-react";
+import { Phone, MapPin, Siren, AlertTriangle } from "lucide-react";
 
 export const Route = createFileRoute("/department/")({
   component: DeptHome,
@@ -62,6 +62,9 @@ function DeptHome() {
     };
   }, []);
 
+  const sosAlerts = alerts.filter((a) => a.alert_type === "sos");
+  const zoneAlerts = alerts.filter((a) => a.alert_type === "zone_entry");
+
   const markers = alerts
     .filter((a) => a.status !== "resolved")
     .slice(0, 20)
@@ -85,27 +88,55 @@ function DeptHome() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Active Alerts</CardTitle>
-          <CardDescription>Immediate notifications requiring action.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {alerts.length === 0 && (
-            <p className="text-sm text-muted-foreground">No alerts yet.</p>
-          )}
-          {alerts.slice(0, 8).map((a) => (
-            <AlertRow
-              key={a.id}
-              alert={a}
-              onView={() => {
-                setPanTo([a.lat, a.lng]);
-                setSelected(a);
-              }}
-            />
-          ))}
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Siren className="h-4 w-4 text-destructive" /> SOS Alerts
+            </CardTitle>
+            <CardDescription>Emergency calls from tourists.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {sosAlerts.length === 0 && (
+              <p className="text-sm text-muted-foreground">No SOS alerts.</p>
+            )}
+            {sosAlerts.slice(0, 6).map((a) => (
+              <AlertRow
+                key={a.id}
+                alert={a}
+                onView={() => {
+                  setPanTo([a.lat, a.lng]);
+                  setSelected(a);
+                }}
+              />
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-500" /> Zone Entry Alerts
+            </CardTitle>
+            <CardDescription>Tourists entering danger zones.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {zoneAlerts.length === 0 && (
+              <p className="text-sm text-muted-foreground">No zone alerts.</p>
+            )}
+            {zoneAlerts.slice(0, 6).map((a) => (
+              <AlertRow
+                key={a.id}
+                alert={a}
+                onView={() => {
+                  setPanTo([a.lat, a.lng]);
+                  setSelected(a);
+                }}
+              />
+            ))}
+          </CardContent>
+        </Card>
+      </div>
 
       <Card>
         <CardHeader>

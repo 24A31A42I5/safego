@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MapContainer, TileLayer, Marker, Polygon, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import type { Database } from "@/integrations/supabase/types";
@@ -28,6 +28,7 @@ interface SafetyMapProps {
   height?: string;
   panTo?: [number, number] | null;
   onMapClick?: (latlng: [number, number]) => void;
+  cursor?: string;
   children?: React.ReactNode;
 }
 
@@ -36,6 +37,18 @@ function PanController({ panTo }: { panTo?: [number, number] | null }) {
   useEffect(() => {
     if (panTo) map.flyTo(panTo, Math.max(map.getZoom(), 15));
   }, [panTo, map]);
+  return null;
+}
+
+function AutoCenter({ location }: { location?: [number, number] | null }) {
+  const map = useMap();
+  const didCenter = useRef(false);
+  useEffect(() => {
+    if (location && !didCenter.current) {
+      didCenter.current = true;
+      map.flyTo(location, 15, { duration: 1.2 });
+    }
+  }, [location, map]);
   return null;
 }
 
@@ -65,6 +78,7 @@ export function SafetyMap({
   height = "400px",
   panTo,
   onMapClick,
+  cursor,
   children,
 }: SafetyMapProps) {
   const [mounted, setMounted] = useState(false);
@@ -86,7 +100,7 @@ export function SafetyMap({
       <MapContainer
         center={userLocation ?? center}
         zoom={zoom}
-        style={{ height: "100%", width: "100%" }}
+        style={{ height: "100%", width: "100%", cursor: cursor ?? "grab" }}
         scrollWheelZoom
       >
         <TileLayer
@@ -94,6 +108,7 @@ export function SafetyMap({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <PanController panTo={panTo} />
+        <AutoCenter location={userLocation} />
         <ClickHandler onMapClick={onMapClick} />
         {zones.map((z) => {
           const coords = z.coordinates as unknown as [number, number][];

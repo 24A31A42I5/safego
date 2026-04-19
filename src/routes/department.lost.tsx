@@ -64,7 +64,7 @@ function LostFound() {
                   <img
                     src={r.photo_url}
                     alt={r.missing_name}
-                    className="h-40 w-full object-cover"
+                    className="h-72 w-full object-contain bg-black/5"
                   />
                 </div>
               )}
