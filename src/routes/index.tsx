@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
+import heroBg from "@/assets/hero-bg.avif";
 import {
   Shield,
   MapPin,
@@ -56,12 +57,10 @@ function Landing() {
       {/* Hero */}
       <section className="relative overflow-hidden">
         <div
-          className="absolute inset-0 -z-10"
-          style={{
-            background:
-              "linear-gradient(135deg, oklch(0.55 0.18 250) 0%, oklch(0.40 0.20 270) 50%, oklch(0.30 0.15 240) 100%)",
-          }}
+          className="absolute inset-0 -z-10 bg-cover bg-center"
+          style={{ backgroundImage: `url(${heroBg})` }}
         />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-br from-primary/80 via-primary/60 to-black/70" />
         <div className="mx-auto max-w-6xl px-4 py-24 text-center text-white">
           <h1 className="mx-auto max-w-3xl text-4xl font-bold tracking-tight md:text-6xl">
             Your Guide to Safer Travels
