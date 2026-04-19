@@ -18,18 +18,18 @@ export const Route = createFileRoute("/signup")({
 type Role = "tourist" | "department";
 
 const baseSchema = z.object({
-  full_name: z.string().trim().min(2, "Name too short").max(100),
+  full_name: z.string().trim().min(1, "Name required").max(100),
   email: z.string().trim().email("Invalid email").max(255),
-  password: z.string().min(6, "At least 6 characters").max(128),
-  phone: z.string().trim().min(5).max(30),
+  password: z.string().min(1, "Password required").max(128),
+  phone: z.string().trim().min(1).max(30),
 });
 
 const touristSchema = baseSchema.extend({
-  emergency_contact: z.string().trim().min(5).max(30),
+  emergency_contact: z.string().trim().min(1).max(30),
 });
 
 const deptSchema = baseSchema.extend({
-  department_type: z.string().trim().min(2).max(60),
+  department_type: z.string().trim().min(1).max(60),
 });
 
 function Signup() {
@@ -58,41 +58,26 @@ function Signup() {
     setLoading(true);
     const newId = generateDigitalId(role);
 
-    const { data, error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
       options: {
         emailRedirectTo: `${window.location.origin}/`,
-        data: { full_name: form.full_name },
+        data: {
+          full_name: form.full_name,
+          phone: form.phone,
+          role,
+          emergency_contact: role === "tourist" ? form.emergency_contact : null,
+          department_type: role === "department" ? form.department_type : null,
+          digital_id: newId,
+        },
       },
     });
 
-    if (error || !data.user) {
-      setLoading(false);
-      toast.error(error?.message || "Signup failed");
-      return;
-    }
-
-    const userId = data.user.id;
-
-    const { error: profErr } = await supabase.from("profiles").insert({
-      id: userId,
-      full_name: form.full_name,
-      email: form.email,
-      phone: form.phone,
-      emergency_contact: role === "tourist" ? form.emergency_contact : null,
-      department_type: role === "department" ? form.department_type : null,
-      digital_id: newId,
-    });
-
-    const { error: roleErr } = await supabase
-      .from("user_roles")
-      .insert({ user_id: userId, role });
-
     setLoading(false);
 
-    if (profErr || roleErr) {
-      toast.error(profErr?.message || roleErr?.message || "Could not save profile");
+    if (error) {
+      toast.error(error.message);
       return;
     }
 
