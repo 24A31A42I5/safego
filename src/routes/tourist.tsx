@@ -46,6 +46,7 @@ function TouristDashboard() {
   const [zones, setZones] = useState<Zone[]>([]);
   const [insideDanger, setInsideDanger] = useState<Zone | null>(null);
   const [routeTo, setRouteTo] = useState<[number, number] | null>(null);
+  const [panTo, setPanTo] = useState<[number, number] | null>(null);
   const [weather, setWeather] = useState<{ temp: number; desc: string; tip: string } | null>(
     null
   );
@@ -244,6 +245,7 @@ function TouristDashboard() {
             zones={zones}
             userLocation={location}
             height="400px"
+            panTo={panTo}
             markers={
               routeTo
                 ? [{ id: "safety", pos: routeTo, label: "Nearest safe zone" }]
@@ -261,7 +263,12 @@ function TouristDashboard() {
               {location[0].toFixed(4)}, {location[1].toFixed(4)}
             </p>
           )}
-          <Button variant="outline" size="sm">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!location}
+            onClick={() => location && setPanTo([...location] as [number, number])}
+          >
             <Navigation className="mr-2 h-4 w-4" /> Locate Me
           </Button>
         </CardContent>
