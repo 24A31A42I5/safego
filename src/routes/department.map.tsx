@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Polygon, useMapEvents } from "react-leaflet";
+import { Polygon, Polyline, CircleMarker } from "react-leaflet";
 import {
   ShieldCheck,
   AlertTriangle,
@@ -130,6 +130,7 @@ function MapManagement() {
             height="420px"
             panTo={panTo}
             onMapClick={handleMapClick}
+            cursor={drawing ? "crosshair" : deleteMode ? "not-allowed" : undefined}
           >
             {deleteMode &&
               zones.map((z) => {
@@ -148,10 +149,32 @@ function MapManagement() {
                 );
               })}
             {drawing && points.length > 0 && (
-              <Polygon
-                positions={points}
-                pathOptions={{ ...STYLE[drawing], fillOpacity: 0.4, dashArray: "5,5" }}
-              />
+              <>
+                {points.length >= 3 ? (
+                  <Polygon
+                    positions={points}
+                    pathOptions={{ ...STYLE[drawing], fillOpacity: 0.35, weight: 2, dashArray: "6,4" }}
+                  />
+                ) : (
+                  <Polyline
+                    positions={points}
+                    pathOptions={{ color: STYLE[drawing].color, weight: 3, dashArray: "6,4" }}
+                  />
+                )}
+                {points.map((p, i) => (
+                  <CircleMarker
+                    key={i}
+                    center={p}
+                    radius={6}
+                    pathOptions={{
+                      color: STYLE[drawing].color,
+                      fillColor: "#fff",
+                      fillOpacity: 1,
+                      weight: 2,
+                    }}
+                  />
+                ))}
+              </>
             )}
           </SafetyMap>
           {drawing && (
