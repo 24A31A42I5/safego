@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MapContainer, TileLayer, Marker, Polygon, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import type { Database } from "@/integrations/supabase/types";
@@ -106,6 +106,7 @@ export function SafetyMap({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <PanController panTo={panTo} />
+        <AutoCenter location={userLocation} />
         <ClickHandler onMapClick={onMapClick} />
         {zones.map((z) => {
           const coords = z.coordinates as unknown as [number, number][];
