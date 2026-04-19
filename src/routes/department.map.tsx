@@ -74,7 +74,7 @@ function MapManagement() {
       {
         name,
         zone_type: drawing,
-        coordinates: points as unknown as object,
+        coordinates: points as unknown as import("@/integrations/supabase/types").Json,
         created_by: user.id,
       },
     ]);
@@ -102,7 +102,7 @@ function MapManagement() {
       {
         name: `Danger zone @ ${new Date().toLocaleTimeString()}`,
         zone_type: "danger",
-        coordinates: poly as unknown as object,
+        coordinates: poly as unknown as import("@/integrations/supabase/types").Json,
         created_by: user.id,
       },
     ]);
