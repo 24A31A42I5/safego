@@ -39,6 +39,18 @@ function PanController({ panTo }: { panTo?: [number, number] | null }) {
   return null;
 }
 
+function AutoCenter({ location }: { location?: [number, number] | null }) {
+  const map = useMap();
+  const didCenter = useRef(false);
+  useEffect(() => {
+    if (location && !didCenter.current) {
+      didCenter.current = true;
+      map.flyTo(location, 15, { duration: 1.2 });
+    }
+  }, [location, map]);
+  return null;
+}
+
 function ClickHandler({
   onMapClick,
 }: {
