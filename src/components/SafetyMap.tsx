@@ -78,6 +78,7 @@ export function SafetyMap({
   height = "400px",
   panTo,
   onMapClick,
+  cursor,
   children,
 }: SafetyMapProps) {
   const [mounted, setMounted] = useState(false);
@@ -99,7 +100,7 @@ export function SafetyMap({
       <MapContainer
         center={userLocation ?? center}
         zoom={zoom}
-        style={{ height: "100%", width: "100%" }}
+        style={{ height: "100%", width: "100%", cursor: cursor ?? "grab" }}
         scrollWheelZoom
       >
         <TileLayer
