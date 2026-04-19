@@ -70,12 +70,14 @@ function MapManagement() {
       return;
     }
     const name = zoneName.trim() || `${drawing} zone ${new Date().toLocaleString()}`;
-    const { error } = await supabase.from("zones").insert({
-      name,
-      zone_type: drawing,
-      coordinates: points as unknown as object,
-      created_by: user.id,
-    });
+    const { error } = await supabase.from("zones").insert([
+      {
+        name,
+        zone_type: drawing,
+        coordinates: points as unknown as object,
+        created_by: user.id,
+      },
+    ]);
     if (error) toast.error(error.message);
     else {
       toast.success("Zone saved");
@@ -96,12 +98,14 @@ function MapManagement() {
       const a = (i / 12) * Math.PI * 2;
       return [location[0] + Math.sin(a) * r, location[1] + Math.cos(a) * r];
     });
-    const { error } = await supabase.from("zones").insert({
-      name: `Danger zone @ ${new Date().toLocaleTimeString()}`,
-      zone_type: "danger",
-      coordinates: poly as unknown as object,
-      created_by: user.id,
-    });
+    const { error } = await supabase.from("zones").insert([
+      {
+        name: `Danger zone @ ${new Date().toLocaleTimeString()}`,
+        zone_type: "danger",
+        coordinates: poly as unknown as object,
+        created_by: user.id,
+      },
+    ]);
     if (error) toast.error(error.message);
     else toast.success("Danger zone created around your location");
   };
