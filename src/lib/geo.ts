@@ -30,3 +30,24 @@ export function polygonCentroid(poly: [number, number][]): [number, number] {
   const lng = poly.reduce((s, p) => s + p[1], 0) / poly.length;
   return [lat, lng];
 }
+
+// Bounding box [southWest, northEast] from a list of points.
+export function pointsBounds(
+  points: [number, number][]
+): [[number, number], [number, number]] | null {
+  if (points.length === 0) return null;
+  let minLat = points[0][0],
+    maxLat = points[0][0],
+    minLng = points[0][1],
+    maxLng = points[0][1];
+  for (const [la, ln] of points) {
+    if (la < minLat) minLat = la;
+    if (la > maxLat) maxLat = la;
+    if (ln < minLng) minLng = ln;
+    if (ln > maxLng) maxLng = ln;
+  }
+  return [
+    [minLat, minLng],
+    [maxLat, maxLng],
+  ];
+}

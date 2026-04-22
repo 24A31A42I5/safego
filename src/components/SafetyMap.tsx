@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { MapContainer, TileLayer, Marker, Polygon, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Polygon, Polyline, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -19,24 +19,48 @@ const ZONE_STYLES: Record<string, { color: string; fillColor: string }> = {
   danger: { color: "#dc2626", fillColor: "#ef4444" },
 };
 
+export interface MapMarker {
+  id: string;
+  pos: [number, number];
+  label?: string;
+  color?: string;
+  avatarUrl?: string | null;
+  initials?: string;
+}
+
 interface SafetyMapProps {
   center?: [number, number];
   zoom?: number;
   zones?: Zone[];
   userLocation?: [number, number] | null;
-  markers?: { id: string; pos: [number, number]; label?: string; color?: string }[];
+  markers?: MapMarker[];
   height?: string;
   panTo?: [number, number] | null;
   onMapClick?: (latlng: [number, number]) => void;
   cursor?: string;
+  routePolyline?: [number, number][] | null;
+  fitBounds?: [[number, number], [number, number]] | null;
   children?: React.ReactNode;
 }
 
 function PanController({ panTo }: { panTo?: [number, number] | null }) {
   const map = useMap();
   useEffect(() => {
-    if (panTo) map.flyTo(panTo, Math.max(map.getZoom(), 15));
+    if (panTo) map.flyTo(panTo, Math.max(map.getZoom(), 15), { duration: 1.0 });
   }, [panTo, map]);
+  return null;
+}
+
+function FitBoundsController({
+  bounds,
+}: {
+  bounds?: [[number, number], [number, number]] | null;
+}) {
+  const map = useMap();
+  useEffect(() => {
+    if (!bounds) return;
+    map.flyToBounds(bounds, { padding: [40, 40], duration: 1.0, maxZoom: 16 });
+  }, [bounds, map]);
   return null;
 }
 
@@ -69,6 +93,20 @@ function ClickHandler({
   return null;
 }
 
+// Build a circular avatar divIcon
+function avatarIcon(opts: { avatarUrl?: string | null; initials?: string; color?: string }): L.DivIcon {
+  const bg = opts.color ?? "#3b82f6";
+  const inner = opts.avatarUrl
+    ? `<img src="${opts.avatarUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" />`
+    : `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:#fff;font-weight:600;font-size:13px;font-family:system-ui">${opts.initials ?? "•"}</div>`;
+  return L.divIcon({
+    className: "",
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+    html: `<div style="width:36px;height:36px;border-radius:50%;border:3px solid ${bg};background:${bg};box-shadow:0 2px 8px rgba(0,0,0,.25);overflow:hidden">${inner}</div>`,
+  });
+}
+
 export function SafetyMap({
   center = [13.0827, 80.2707], // Chennai default
   zoom = 13,
@@ -79,6 +117,8 @@ export function SafetyMap({
   panTo,
   onMapClick,
   cursor,
+  routePolyline,
+  fitBounds,
   children,
 }: SafetyMapProps) {
   const [mounted, setMounted] = useState(false);
@@ -108,6 +148,7 @@ export function SafetyMap({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <PanController panTo={panTo} />
+        <FitBoundsController bounds={fitBounds} />
         <AutoCenter location={userLocation} />
         <ClickHandler onMapClick={onMapClick} />
         {zones.map((z) => {
@@ -128,16 +169,33 @@ export function SafetyMap({
             </Polygon>
           );
         })}
+        {routePolyline && routePolyline.length > 1 && (
+          <Polyline
+            positions={routePolyline}
+            pathOptions={{ color: "#2563eb", weight: 5, opacity: 0.8 }}
+          />
+        )}
         {userLocation && (
           <Marker position={userLocation}>
             <Popup>You are here</Popup>
           </Marker>
         )}
-        {markers.map((m) => (
-          <Marker key={m.id} position={m.pos}>
-            {m.label && <Popup>{m.label}</Popup>}
-          </Marker>
-        ))}
+        {markers.map((m) => {
+          const useCustom = m.avatarUrl || m.initials || m.color;
+          return (
+            <Marker
+              key={m.id}
+              position={m.pos}
+              icon={
+                useCustom
+                  ? avatarIcon({ avatarUrl: m.avatarUrl, initials: m.initials, color: m.color })
+                  : undefined
+              }
+            >
+              {m.label && <Popup>{m.label}</Popup>}
+            </Marker>
+          );
+        })}
         {children}
       </MapContainer>
     </div>
