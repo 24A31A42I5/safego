@@ -50,6 +50,41 @@ export type Database = {
         }
         Relationships: []
       }
+      member_locations: {
+        Row: {
+          group_id: string
+          id: string
+          lat: number
+          lng: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          group_id: string
+          id?: string
+          lat: number
+          lng: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          group_id?: string
+          id?: string
+          lat?: number
+          lng?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_locations_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "tour_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -82,6 +117,50 @@ export type Database = {
           phone?: string | null
         }
         Relationships: []
+      }
+      separation_alerts: {
+        Row: {
+          created_at: string
+          distance_km: number
+          group_id: string
+          id: string
+          lat: number
+          lng: number
+          severity: string
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          created_at?: string
+          distance_km: number
+          group_id: string
+          id?: string
+          lat: number
+          lng: number
+          severity: string
+          user_id: string
+          user_name: string
+        }
+        Update: {
+          created_at?: string
+          distance_km?: number
+          group_id?: string
+          id?: string
+          lat?: number
+          lng?: number
+          severity?: string
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "separation_alerts_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "tour_groups"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sos_alerts: {
         Row: {
@@ -119,6 +198,62 @@ export type Database = {
           tourist_id?: string
           tourist_name?: string
           tourist_phone?: string | null
+        }
+        Relationships: []
+      }
+      tour_group_members: {
+        Row: {
+          group_id: string
+          id: string
+          joined_at: string
+          user_id: string
+        }
+        Insert: {
+          group_id: string
+          id?: string
+          joined_at?: string
+          user_id: string
+        }
+        Update: {
+          group_id?: string
+          id?: string
+          joined_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tour_group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "tour_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tour_groups: {
+        Row: {
+          created_at: string
+          creator_id: string
+          id: string
+          invite_code: string
+          name: string
+          waypoints: Json
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          id?: string
+          invite_code?: string
+          name: string
+          waypoints?: Json
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          id?: string
+          invite_code?: string
+          name?: string
+          waypoints?: Json
         }
         Relationships: []
       }
@@ -177,6 +312,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_group_member: {
+        Args: { _group_id: string; _user_id: string }
         Returns: boolean
       }
     }

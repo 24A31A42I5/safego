@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { ProtectedShell } from "@/components/AppShell";
 import { SafetyMap, type Zone } from "@/components/SafetyMap";
@@ -19,6 +19,7 @@ import { useAuth } from "@/lib/auth";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { supabase } from "@/integrations/supabase/client";
 import { pointInPolygon, polygonCentroid, haversine } from "@/lib/geo";
+import { fetchRoute, formatDistance, formatDuration, type RouteResult } from "@/lib/routing";
 import { toast } from "sonner";
 import {
   Siren,
@@ -30,6 +31,7 @@ import {
   AlertTriangle,
   Navigation,
   MapPin,
+  Users,
 } from "lucide-react";
 
 export const Route = createFileRoute("/tourist")({
@@ -46,6 +48,7 @@ function TouristDashboard() {
   const [zones, setZones] = useState<Zone[]>([]);
   const [insideDanger, setInsideDanger] = useState<Zone | null>(null);
   const [routeTo, setRouteTo] = useState<[number, number] | null>(null);
+  const [route, setRoute] = useState<RouteResult | null>(null);
   const [panTo, setPanTo] = useState<[number, number] | null>(null);
   const [weather, setWeather] = useState<{ temp: number; desc: string; tip: string } | null>(
     null
@@ -141,10 +144,30 @@ function TouristDashboard() {
     } else if (!danger && insideDanger) {
       setInsideDanger(null);
       setRouteTo(null);
+      setRoute(null);
       lastAlertedZone.current = null;
       toast.success("✅ You left the danger zone");
     }
   }, [location, zones, user, profile, insideDanger]);
+
+  // Fetch turn-by-turn route from current location to safe zone (auto-updates as user moves)
+  useEffect(() => {
+    if (!location || !routeTo) {
+      setRoute(null);
+      return;
+    }
+    const ctrl = new AbortController();
+    fetchRoute([location, routeTo], "walking", ctrl.signal)
+      .then((r) => {
+        if (r) setRoute(r);
+        else
+          toast.error("Could not calculate route — showing direct path", {
+            id: "route-fallback",
+          });
+      })
+      .catch(() => {});
+    return () => ctrl.abort();
+  }, [location, routeTo]);
 
   const handleSOS = async () => {
     if (!user || !profile || !location) {
@@ -167,6 +190,8 @@ function TouristDashboard() {
 
   const distanceToSafety =
     location && routeTo ? Math.round(haversine(location, routeTo)) : null;
+  const fallbackPolyline: [number, number][] | null =
+    location && routeTo && !route ? [location, routeTo] : null;
 
   return (
     <div className="space-y-4">
@@ -178,6 +203,13 @@ function TouristDashboard() {
             ID: {profile?.digital_id}
           </CardDescription>
         </CardHeader>
+        <CardContent>
+          <Button asChild variant="outline" className="w-full sm:w-auto">
+            <Link to="/tourist/groups">
+              <Users className="mr-2 h-4 w-4" /> Group Tours
+            </Link>
+          </Button>
+        </CardContent>
       </Card>
 
       {/* Emergency */}
@@ -231,13 +263,19 @@ function TouristDashboard() {
           {insideDanger && (
             <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
               <div className="flex items-center gap-2 font-semibold text-destructive">
-                <AlertTriangle className="h-4 w-4" /> DANGER: Move to safety
+                <AlertTriangle className="h-4 w-4" /> DANGER: Follow the blue route to safety
               </div>
-              {distanceToSafety && (
+              {route ? (
                 <div className="mt-1 text-muted-foreground">
-                  Nearest safe zone: <b>{distanceToSafety} m</b> · ETA{" "}
-                  <b>{Math.max(1, Math.round(distanceToSafety / 80))} min walking</b>
+                  Nearest safe zone: <b>{formatDistance(route.distance)}</b> · ETA{" "}
+                  <b>{formatDuration(route.duration)}</b> walking
                 </div>
+              ) : (
+                distanceToSafety && (
+                  <div className="mt-1 text-muted-foreground">
+                    Nearest safe zone: <b>{distanceToSafety} m</b> · calculating route…
+                  </div>
+                )
               )}
             </div>
           )}
@@ -246,9 +284,10 @@ function TouristDashboard() {
             userLocation={location}
             height="400px"
             panTo={panTo}
+            routePolyline={route?.coordinates ?? fallbackPolyline}
             markers={
               routeTo
-                ? [{ id: "safety", pos: routeTo, label: "Nearest safe zone" }]
+                ? [{ id: "safety", pos: routeTo, label: "Nearest safe zone", color: "#16a34a" }]
                 : []
             }
           />

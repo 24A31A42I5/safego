@@ -4,17 +4,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Phone, MapPin, Calendar, Siren, CheckCircle2 } from "lucide-react";
+import { Phone, MapPin, Calendar, AlertTriangle, CheckCircle2 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 import { formatDistanceToNow } from "@/lib/format";
 
-export const Route = createFileRoute("/department/sos")({
-  component: SosReports,
+export const Route = createFileRoute("/department/zones")({
+  component: ZoneReports,
 });
 
 type Alert = Database["public"]["Tables"]["sos_alerts"]["Row"];
 
-function SosReports() {
+function ZoneReports() {
   const navigate = useNavigate();
   const [alerts, setAlerts] = useState<Alert[]>([]);
 
@@ -23,15 +23,17 @@ function SosReports() {
       const { data } = await supabase
         .from("sos_alerts")
         .select("*")
-        .eq("alert_type", "sos")
+        .eq("alert_type", "zone_entry")
         .order("created_at", { ascending: false });
       if (data) setAlerts(data);
     };
     load();
     const ch = supabase
-      .channel("dept-sos")
-      .on("postgres_changes", { event: "*", schema: "public", table: "sos_alerts" }, () =>
-        load()
+      .channel("dept-zones")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "sos_alerts" },
+        () => load()
       )
       .subscribe();
     return () => {
@@ -52,9 +54,9 @@ function SosReports() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">SOS Reports</h1>
+      <h1 className="text-2xl font-bold">Zone Entry Reports</h1>
       <p className="text-sm text-muted-foreground">
-        {alerts.length} SOS alert{alerts.length === 1 ? "" : "s"}
+        {alerts.length} zone entry alert{alerts.length === 1 ? "" : "s"}
       </p>
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -72,8 +74,8 @@ function SosReports() {
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between gap-2">
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <Siren className="h-4 w-4 text-destructive" />
-                  SOS
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  Zone Entry
                 </CardTitle>
                 <Badge
                   className="capitalize"
@@ -88,9 +90,7 @@ function SosReports() {
                   {a.status}
                 </Badge>
               </div>
-              <CardDescription className="font-mono text-xs">
-                {a.id.slice(0, 8)}
-              </CardDescription>
+              <CardDescription className="font-mono text-xs">{a.id.slice(0, 8)}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <div className="font-semibold">{a.tourist_name}</div>
@@ -119,7 +119,7 @@ function SosReports() {
                 )}
                 {a.status !== "resolved" && (
                   <Button size="sm" onClick={() => updateStatus(a.id, "resolved")}>
-                    <CheckCircle2 className="mr-1 h-3 w-3" /> Completed
+                    <CheckCircle2 className="mr-1 h-3 w-3" /> Resolve
                   </Button>
                 )}
               </div>
@@ -127,7 +127,7 @@ function SosReports() {
           </Card>
         ))}
         {alerts.length === 0 && (
-          <p className="text-sm text-muted-foreground">No SOS alerts yet.</p>
+          <p className="text-sm text-muted-foreground">No zone alerts yet.</p>
         )}
       </div>
     </div>

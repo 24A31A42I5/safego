@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { z } from "zod";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useGeolocation } from "@/hooks/useGeolocation";
@@ -16,11 +18,16 @@ import {
   AlertCircle,
   Trash2,
   Save,
-  MapPin,
   Crosshair,
 } from "lucide-react";
 
+const searchSchema = z.object({
+  focusLat: fallback(z.number().optional(), undefined),
+  focusLng: fallback(z.number().optional(), undefined),
+});
+
 export const Route = createFileRoute("/department/map")({
+  validateSearch: zodValidator(searchSchema),
   component: MapManagement,
 });
 
