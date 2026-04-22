@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { ProtectedShell } from "@/components/AppShell";
 import { SafetyMap, type Zone } from "@/components/SafetyMap";
@@ -19,6 +19,7 @@ import { useAuth } from "@/lib/auth";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { supabase } from "@/integrations/supabase/client";
 import { pointInPolygon, polygonCentroid, haversine } from "@/lib/geo";
+import { fetchRoute, formatDistance, formatDuration, type RouteResult } from "@/lib/routing";
 import { toast } from "sonner";
 import {
   Siren,
@@ -30,6 +31,7 @@ import {
   AlertTriangle,
   Navigation,
   MapPin,
+  Users,
 } from "lucide-react";
 
 export const Route = createFileRoute("/tourist")({
@@ -46,6 +48,7 @@ function TouristDashboard() {
   const [zones, setZones] = useState<Zone[]>([]);
   const [insideDanger, setInsideDanger] = useState<Zone | null>(null);
   const [routeTo, setRouteTo] = useState<[number, number] | null>(null);
+  const [route, setRoute] = useState<RouteResult | null>(null);
   const [panTo, setPanTo] = useState<[number, number] | null>(null);
   const [weather, setWeather] = useState<{ temp: number; desc: string; tip: string } | null>(
     null
@@ -141,10 +144,30 @@ function TouristDashboard() {
     } else if (!danger && insideDanger) {
       setInsideDanger(null);
       setRouteTo(null);
+      setRoute(null);
       lastAlertedZone.current = null;
       toast.success("✅ You left the danger zone");
     }
   }, [location, zones, user, profile, insideDanger]);
+
+  // Fetch turn-by-turn route from current location to safe zone (auto-updates as user moves)
+  useEffect(() => {
+    if (!location || !routeTo) {
+      setRoute(null);
+      return;
+    }
+    const ctrl = new AbortController();
+    fetchRoute([location, routeTo], "walking", ctrl.signal)
+      .then((r) => {
+        if (r) setRoute(r);
+        else
+          toast.error("Could not calculate route — showing direct path", {
+            id: "route-fallback",
+          });
+      })
+      .catch(() => {});
+    return () => ctrl.abort();
+  }, [location, routeTo]);
 
   const handleSOS = async () => {
     if (!user || !profile || !location) {
@@ -167,6 +190,8 @@ function TouristDashboard() {
 
   const distanceToSafety =
     location && routeTo ? Math.round(haversine(location, routeTo)) : null;
+  const fallbackPolyline: [number, number][] | null =
+    location && routeTo && !route ? [location, routeTo] : null;
 
   return (
     <div className="space-y-4">
