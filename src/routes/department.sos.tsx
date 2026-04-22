@@ -1,10 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Phone, MapPin, Calendar, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Phone, MapPin, Calendar, Siren, CheckCircle2 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 import { formatDistanceToNow } from "@/lib/format";
 
@@ -15,6 +15,7 @@ export const Route = createFileRoute("/department/sos")({
 type Alert = Database["public"]["Tables"]["sos_alerts"]["Row"];
 
 function SosReports() {
+  const navigate = useNavigate();
   const [alerts, setAlerts] = useState<Alert[]>([]);
 
   useEffect(() => {
@@ -22,6 +23,7 @@ function SosReports() {
       const { data } = await supabase
         .from("sos_alerts")
         .select("*")
+        .eq("alert_type", "sos")
         .order("created_at", { ascending: false });
       if (data) setAlerts(data);
     };
@@ -41,10 +43,19 @@ function SosReports() {
     await supabase.from("sos_alerts").update({ status }).eq("id", id);
   };
 
+  const viewOnMap = (a: Alert) => {
+    navigate({
+      to: "/department/map",
+      search: { focusLat: a.lat, focusLng: a.lng },
+    });
+  };
+
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">SOS &amp; Zone Alerts</h1>
-      <p className="text-sm text-muted-foreground">{alerts.length} total alerts</p>
+      <h1 className="text-2xl font-bold">SOS Reports</h1>
+      <p className="text-sm text-muted-foreground">
+        {alerts.length} SOS alert{alerts.length === 1 ? "" : "s"}
+      </p>
 
       <div className="grid gap-3 sm:grid-cols-2">
         {alerts.map((a) => (
@@ -60,9 +71,9 @@ function SosReports() {
           >
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between gap-2">
-                <CardTitle className="flex items-center gap-2 text-base capitalize">
-                  <AlertTriangle className="h-4 w-4" />
-                  {a.alert_type.replace("_", " ")}
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Siren className="h-4 w-4 text-destructive" />
+                  SOS
                 </CardTitle>
                 <Badge
                   className="capitalize"
@@ -96,14 +107,8 @@ function SosReports() {
                 <Calendar className="h-3 w-3" /> {formatDistanceToNow(a.created_at)}
               </div>
               <div className="flex flex-wrap gap-2 pt-2">
-                <Button asChild size="sm" variant="outline">
-                  <a
-                    href={`https://www.openstreetmap.org/?mlat=${a.lat}&mlon=${a.lng}#map=17/${a.lat}/${a.lng}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    <MapPin className="mr-1 h-3 w-3" /> View on Map
-                  </a>
+                <Button size="sm" variant="outline" onClick={() => viewOnMap(a)}>
+                  <MapPin className="mr-1 h-3 w-3" /> View on Map
                 </Button>
                 {a.tourist_phone && (
                   <Button asChild size="sm" variant="outline">
@@ -122,7 +127,7 @@ function SosReports() {
           </Card>
         ))}
         {alerts.length === 0 && (
-          <p className="text-sm text-muted-foreground">No alerts yet.</p>
+          <p className="text-sm text-muted-foreground">No SOS alerts yet.</p>
         )}
       </div>
     </div>
