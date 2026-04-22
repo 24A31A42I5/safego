@@ -256,13 +256,19 @@ function TouristDashboard() {
           {insideDanger && (
             <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
               <div className="flex items-center gap-2 font-semibold text-destructive">
-                <AlertTriangle className="h-4 w-4" /> DANGER: Move to safety
+                <AlertTriangle className="h-4 w-4" /> DANGER: Follow the blue route to safety
               </div>
-              {distanceToSafety && (
+              {route ? (
                 <div className="mt-1 text-muted-foreground">
-                  Nearest safe zone: <b>{distanceToSafety} m</b> · ETA{" "}
-                  <b>{Math.max(1, Math.round(distanceToSafety / 80))} min walking</b>
+                  Nearest safe zone: <b>{formatDistance(route.distance)}</b> · ETA{" "}
+                  <b>{formatDuration(route.duration)}</b> walking
                 </div>
+              ) : (
+                distanceToSafety && (
+                  <div className="mt-1 text-muted-foreground">
+                    Nearest safe zone: <b>{distanceToSafety} m</b> · calculating route…
+                  </div>
+                )
               )}
             </div>
           )}
@@ -271,9 +277,10 @@ function TouristDashboard() {
             userLocation={location}
             height="400px"
             panTo={panTo}
+            routePolyline={route?.coordinates ?? fallbackPolyline}
             markers={
               routeTo
-                ? [{ id: "safety", pos: routeTo, label: "Nearest safe zone" }]
+                ? [{ id: "safety", pos: routeTo, label: "Nearest safe zone", color: "#16a34a" }]
                 : []
             }
           />
