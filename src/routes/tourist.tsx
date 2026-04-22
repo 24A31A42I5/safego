@@ -203,6 +203,13 @@ function TouristDashboard() {
             ID: {profile?.digital_id}
           </CardDescription>
         </CardHeader>
+        <CardContent>
+          <Button asChild variant="outline" className="w-full sm:w-auto">
+            <Link to="/tourist/groups">
+              <Users className="mr-2 h-4 w-4" /> Group Tours
+            </Link>
+          </Button>
+        </CardContent>
       </Card>
 
       {/* Emergency */}
