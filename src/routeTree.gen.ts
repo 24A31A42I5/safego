@@ -14,6 +14,7 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DepartmentRouteImport } from './routes/department'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as TouristIndexRouteImport } from './routes/tourist.index'
 import { Route as DepartmentIndexRouteImport } from './routes/department.index'
 import { Route as TouristGroupsRouteImport } from './routes/tourist.groups'
 import { Route as DepartmentZonesRouteImport } from './routes/department.zones'
@@ -21,6 +22,7 @@ import { Route as DepartmentSosRouteImport } from './routes/department.sos'
 import { Route as DepartmentMapRouteImport } from './routes/department.map'
 import { Route as DepartmentLostRouteImport } from './routes/department.lost'
 import { Route as DepartmentIncidentsRouteImport } from './routes/department.incidents'
+import { Route as TouristGroupsIndexRouteImport } from './routes/tourist.groups.index'
 import { Route as TouristGroupsGroupIdRouteImport } from './routes/tourist.groups.$groupId'
 
 const TouristRoute = TouristRouteImport.update({
@@ -47,6 +49,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const TouristIndexRoute = TouristIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => TouristRoute,
 } as any)
 const DepartmentIndexRoute = DepartmentIndexRouteImport.update({
   id: '/',
@@ -83,6 +90,11 @@ const DepartmentIncidentsRoute = DepartmentIncidentsRouteImport.update({
   path: '/incidents',
   getParentRoute: () => DepartmentRoute,
 } as any)
+const TouristGroupsIndexRoute = TouristGroupsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => TouristGroupsRoute,
+} as any)
 const TouristGroupsGroupIdRoute = TouristGroupsGroupIdRouteImport.update({
   id: '/$groupId',
   path: '/$groupId',
@@ -102,21 +114,23 @@ export interface FileRoutesByFullPath {
   '/department/zones': typeof DepartmentZonesRoute
   '/tourist/groups': typeof TouristGroupsRouteWithChildren
   '/department/': typeof DepartmentIndexRoute
+  '/tourist/': typeof TouristIndexRoute
   '/tourist/groups/$groupId': typeof TouristGroupsGroupIdRoute
+  '/tourist/groups/': typeof TouristGroupsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
-  '/tourist': typeof TouristRouteWithChildren
   '/department/incidents': typeof DepartmentIncidentsRoute
   '/department/lost': typeof DepartmentLostRoute
   '/department/map': typeof DepartmentMapRoute
   '/department/sos': typeof DepartmentSosRoute
   '/department/zones': typeof DepartmentZonesRoute
-  '/tourist/groups': typeof TouristGroupsRouteWithChildren
   '/department': typeof DepartmentIndexRoute
+  '/tourist': typeof TouristIndexRoute
   '/tourist/groups/$groupId': typeof TouristGroupsGroupIdRoute
+  '/tourist/groups': typeof TouristGroupsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -132,7 +146,9 @@ export interface FileRoutesById {
   '/department/zones': typeof DepartmentZonesRoute
   '/tourist/groups': typeof TouristGroupsRouteWithChildren
   '/department/': typeof DepartmentIndexRoute
+  '/tourist/': typeof TouristIndexRoute
   '/tourist/groups/$groupId': typeof TouristGroupsGroupIdRoute
+  '/tourist/groups/': typeof TouristGroupsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -149,21 +165,23 @@ export interface FileRouteTypes {
     | '/department/zones'
     | '/tourist/groups'
     | '/department/'
+    | '/tourist/'
     | '/tourist/groups/$groupId'
+    | '/tourist/groups/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
     | '/signup'
-    | '/tourist'
     | '/department/incidents'
     | '/department/lost'
     | '/department/map'
     | '/department/sos'
     | '/department/zones'
-    | '/tourist/groups'
     | '/department'
+    | '/tourist'
     | '/tourist/groups/$groupId'
+    | '/tourist/groups'
   id:
     | '__root__'
     | '/'
@@ -178,7 +196,9 @@ export interface FileRouteTypes {
     | '/department/zones'
     | '/tourist/groups'
     | '/department/'
+    | '/tourist/'
     | '/tourist/groups/$groupId'
+    | '/tourist/groups/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -225,6 +245,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/tourist/': {
+      id: '/tourist/'
+      path: '/'
+      fullPath: '/tourist/'
+      preLoaderRoute: typeof TouristIndexRouteImport
+      parentRoute: typeof TouristRoute
     }
     '/department/': {
       id: '/department/'
@@ -275,6 +302,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DepartmentIncidentsRouteImport
       parentRoute: typeof DepartmentRoute
     }
+    '/tourist/groups/': {
+      id: '/tourist/groups/'
+      path: '/'
+      fullPath: '/tourist/groups/'
+      preLoaderRoute: typeof TouristGroupsIndexRouteImport
+      parentRoute: typeof TouristGroupsRoute
+    }
     '/tourist/groups/$groupId': {
       id: '/tourist/groups/$groupId'
       path: '/$groupId'
@@ -309,10 +343,12 @@ const DepartmentRouteWithChildren = DepartmentRoute._addFileChildren(
 
 interface TouristGroupsRouteChildren {
   TouristGroupsGroupIdRoute: typeof TouristGroupsGroupIdRoute
+  TouristGroupsIndexRoute: typeof TouristGroupsIndexRoute
 }
 
 const TouristGroupsRouteChildren: TouristGroupsRouteChildren = {
   TouristGroupsGroupIdRoute: TouristGroupsGroupIdRoute,
+  TouristGroupsIndexRoute: TouristGroupsIndexRoute,
 }
 
 const TouristGroupsRouteWithChildren = TouristGroupsRoute._addFileChildren(
@@ -321,10 +357,12 @@ const TouristGroupsRouteWithChildren = TouristGroupsRoute._addFileChildren(
 
 interface TouristRouteChildren {
   TouristGroupsRoute: typeof TouristGroupsRouteWithChildren
+  TouristIndexRoute: typeof TouristIndexRoute
 }
 
 const TouristRouteChildren: TouristRouteChildren = {
   TouristGroupsRoute: TouristGroupsRouteWithChildren,
+  TouristIndexRoute: TouristIndexRoute,
 }
 
 const TouristRouteWithChildren =

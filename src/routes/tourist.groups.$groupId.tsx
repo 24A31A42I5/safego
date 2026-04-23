@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { ProtectedShell } from "@/components/AppShell";
 import { useAuth } from "@/lib/auth";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,11 +13,7 @@ import { fetchRoute, formatDistance, formatDuration, type RouteResult } from "@/
 import { haversine, pointsBounds } from "@/lib/geo";
 
 export const Route = createFileRoute("/tourist/groups/$groupId")({
-  component: () => (
-    <ProtectedShell requireRole="tourist">
-      <GroupDetail />
-    </ProtectedShell>
-  ),
+  component: GroupDetail,
 });
 
 interface GroupRow {

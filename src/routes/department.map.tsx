@@ -6,12 +6,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { SafetyMap, type Zone } from "@/components/SafetyMap";
+import { MapDraftOverlay } from "@/components/MapDraftOverlay";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Polygon, Polyline, CircleMarker } from "react-leaflet";
 import {
   ShieldCheck,
   AlertTriangle,
@@ -139,50 +139,17 @@ function MapManagement() {
             onMapClick={handleMapClick}
             cursor={drawing ? "crosshair" : deleteMode ? "not-allowed" : undefined}
           >
-            {deleteMode &&
-              zones.map((z) => {
-                const coords = z.coordinates as unknown as [number, number][];
-                if (!Array.isArray(coords) || coords.length < 3) return null;
-                const style = STYLE[z.zone_type as DrawType];
-                return (
-                  <Polygon
-                    key={z.id}
-                    positions={coords}
-                    pathOptions={{ ...style, fillOpacity: 0.5, weight: 3 }}
-                    eventHandlers={{
-                      click: () => deleteZone(z.id),
-                    }}
-                  />
-                );
-              })}
-            {drawing && points.length > 0 && (
-              <>
-                {points.length >= 3 ? (
-                  <Polygon
-                    positions={points}
-                    pathOptions={{ ...STYLE[drawing], fillOpacity: 0.35, weight: 2, dashArray: "6,4" }}
-                  />
-                ) : (
-                  <Polyline
-                    positions={points}
-                    pathOptions={{ color: STYLE[drawing].color, weight: 3, dashArray: "6,4" }}
-                  />
-                )}
-                {points.map((p, i) => (
-                  <CircleMarker
-                    key={i}
-                    center={p}
-                    radius={6}
-                    pathOptions={{
-                      color: STYLE[drawing].color,
-                      fillColor: "#fff",
-                      fillOpacity: 1,
-                      weight: 2,
-                    }}
-                  />
-                ))}
-              </>
-            )}
+            <MapDraftOverlay
+              deleteMode={deleteMode}
+              drawing={drawing}
+              points={points}
+              zones={zones.map((z) => ({
+                id: z.id,
+                zone_type: z.zone_type as DrawType,
+                coordinates: z.coordinates,
+              }))}
+              onDeleteZone={deleteZone}
+            />
           </SafetyMap>
           {drawing && (
             <p className="mt-2 text-xs text-muted-foreground">
