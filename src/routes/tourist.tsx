@@ -222,32 +222,37 @@ function TouristDashboard() {
             In case of emergency, use the options below to get help quickly.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2">
+        <CardContent className="grid grid-cols-2 gap-3">
           <Button
             onClick={handleSOS}
-            className="h-16 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            className="h-20 flex-col gap-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            <AlertTriangle className="mr-2 h-5 w-5" /> SOS
+            <AlertTriangle className="h-5 w-5" />
+            <span className="text-xs sm:text-sm">SOS</span>
           </Button>
           <LostReportDialog />
-          <Button variant="outline" className="h-12" asChild>
+          <Button variant="outline" className="h-20 flex-col gap-1" asChild>
             <a href={`tel:${profile?.emergency_contact ?? ""}`}>
-              <Phone className="mr-2 h-4 w-4" /> Notify Contacts
+              <Phone className="h-5 w-5" />
+              <span className="text-xs sm:text-sm">Notify Contacts</span>
             </a>
           </Button>
-          <Button variant="outline" className="h-12" asChild>
+          <Button variant="outline" className="h-20 flex-col gap-1" asChild>
             <a href="tel:100">
-              <Phone className="mr-2 h-4 w-4" /> Local Police
+              <Phone className="h-5 w-5" />
+              <span className="text-xs sm:text-sm">Local Police</span>
             </a>
           </Button>
-          <Button variant="outline" className="h-12" asChild>
+          <Button variant="outline" className="h-20 flex-col gap-1" asChild>
             <a href="tel:108">
-              <Stethoscope className="mr-2 h-4 w-4" /> Ambulance
+              <Stethoscope className="h-5 w-5" />
+              <span className="text-xs sm:text-sm">Ambulance</span>
             </a>
           </Button>
-          <Button variant="outline" className="h-12" asChild>
+          <Button variant="outline" className="h-20 flex-col gap-1" asChild>
             <a href="tel:1363">
-              <Headphones className="mr-2 h-4 w-4" /> Tourist Helpline
+              <Headphones className="h-5 w-5" />
+              <span className="text-xs sm:text-sm">Helpline</span>
             </a>
           </Button>
         </CardContent>
@@ -412,8 +417,9 @@ function LostReportDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="h-16 bg-destructive text-destructive-foreground hover:bg-destructive/90">
-          <UserSearch className="mr-2 h-5 w-5" /> Report Lost Tourist
+        <Button className="h-20 flex-col gap-1 bg-destructive text-destructive-foreground hover:bg-destructive/90">
+          <UserSearch className="h-5 w-5" />
+          <span className="text-xs sm:text-sm">Report Lost</span>
         </Button>
       </DialogTrigger>
       <DialogContent>

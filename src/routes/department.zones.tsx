@@ -47,8 +47,8 @@ function ZoneReports() {
 
   const viewOnMap = (a: Alert) => {
     navigate({
-      to: "/department/map",
-      search: { focusLat: a.lat, focusLng: a.lng },
+      to: "/department",
+      search: { focusLat: a.lat, focusLng: a.lng, focusId: a.id },
     });
   };
 

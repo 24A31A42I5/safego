@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { z } from "zod";
+import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { supabase } from "@/integrations/supabase/client";
 import { SafetyMap, type Zone } from "@/components/SafetyMap";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,13 +25,21 @@ import type { Database } from "@/integrations/supabase/types";
 import { formatDistanceToNow } from "@/lib/format";
 import { Phone, MapPin, Siren, AlertTriangle } from "lucide-react";
 
+const searchSchema = z.object({
+  focusLat: fallback(z.number().optional(), undefined),
+  focusLng: fallback(z.number().optional(), undefined),
+  focusId: fallback(z.string().optional(), undefined),
+});
+
 export const Route = createFileRoute("/department/")({
+  validateSearch: zodValidator(searchSchema),
   component: DeptHome,
 });
 
 type Alert = Database["public"]["Tables"]["sos_alerts"]["Row"];
 
 function DeptHome() {
+  const { focusLat, focusLng, focusId } = Route.useSearch();
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [zones, setZones] = useState<Zone[]>([]);
   const [panTo, setPanTo] = useState<[number, number] | null>(null);
@@ -61,6 +71,17 @@ function DeptHome() {
       supabase.removeChannel(ch);
     };
   }, []);
+
+  // Auto-focus map when arriving with focusLat/focusLng search params
+  useEffect(() => {
+    if (focusLat != null && focusLng != null) {
+      setPanTo([focusLat, focusLng]);
+      if (focusId) {
+        const found = alerts.find((a) => a.id === focusId);
+        if (found) setSelected(found);
+      }
+    }
+  }, [focusLat, focusLng, focusId, alerts]);
 
   const sosAlerts = alerts.filter((a) => a.alert_type === "sos");
   const zoneAlerts = alerts.filter((a) => a.alert_type === "zone_entry");
