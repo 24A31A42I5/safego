@@ -1,14 +1,14 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import type { ComponentProps } from "react";
-import type { SafetyMap as SafetyMapClient } from "./SafetyMap.client";
+import type { SafetyMap as SafetyMapImpl } from "./SafetyMap.impl";
 
-export type { Zone, MapMarker } from "./SafetyMap.client";
+export type { Zone, MapMarker } from "./SafetyMap.impl";
 
 const LazySafetyMap = lazy(() =>
-  import("./SafetyMap.client").then((m) => ({ default: m.SafetyMap }))
+  import("./SafetyMap.impl").then((m) => ({ default: m.SafetyMap }))
 );
 
-type Props = ComponentProps<typeof SafetyMapClient>;
+type Props = ComponentProps<typeof SafetyMapImpl>;
 
 export function SafetyMap(props: Props) {
   const [mounted, setMounted] = useState(false);
