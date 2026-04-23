@@ -18,7 +18,7 @@ import {
 import { toast } from "sonner";
 import { Plus, Users, ArrowRight, LogIn, ArrowLeft } from "lucide-react";
 
-export const Route = createFileRoute("/tourist/groups")({
+export const Route = createFileRoute("/tourist/groups/")({
   component: () => (
     <ProtectedShell requireRole="tourist">
       <GroupsPage />

@@ -9,25 +9,19 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TouristRouteImport } from './routes/tourist'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DepartmentRouteImport } from './routes/department'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DepartmentIndexRouteImport } from './routes/department.index'
-import { Route as TouristGroupsRouteImport } from './routes/tourist.groups'
 import { Route as DepartmentZonesRouteImport } from './routes/department.zones'
 import { Route as DepartmentSosRouteImport } from './routes/department.sos'
 import { Route as DepartmentMapRouteImport } from './routes/department.map'
 import { Route as DepartmentLostRouteImport } from './routes/department.lost'
 import { Route as DepartmentIncidentsRouteImport } from './routes/department.incidents'
+import { Route as TouristGroupsIndexRouteImport } from './routes/tourist.groups.index'
 import { Route as TouristGroupsGroupIdRouteImport } from './routes/tourist.groups.$groupId'
 
-const TouristRoute = TouristRouteImport.update({
-  id: '/tourist',
-  path: '/tourist',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
@@ -52,11 +46,6 @@ const DepartmentIndexRoute = DepartmentIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => DepartmentRoute,
-} as any)
-const TouristGroupsRoute = TouristGroupsRouteImport.update({
-  id: '/groups',
-  path: '/groups',
-  getParentRoute: () => TouristRoute,
 } as any)
 const DepartmentZonesRoute = DepartmentZonesRouteImport.update({
   id: '/zones',
@@ -83,6 +72,11 @@ const DepartmentIncidentsRoute = DepartmentIncidentsRouteImport.update({
   path: '/incidents',
   getParentRoute: () => DepartmentRoute,
 } as any)
+const TouristGroupsIndexRoute = TouristGroupsIndexRouteImport.update({
+  id: '/tourist/groups/',
+  path: '/tourist/groups/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TouristGroupsGroupIdRoute = TouristGroupsGroupIdRouteImport.update({
   id: '/$groupId',
   path: '/$groupId',
@@ -94,29 +88,27 @@ export interface FileRoutesByFullPath {
   '/department': typeof DepartmentRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
-  '/tourist': typeof TouristRouteWithChildren
   '/department/incidents': typeof DepartmentIncidentsRoute
   '/department/lost': typeof DepartmentLostRoute
   '/department/map': typeof DepartmentMapRoute
   '/department/sos': typeof DepartmentSosRoute
   '/department/zones': typeof DepartmentZonesRoute
-  '/tourist/groups': typeof TouristGroupsRouteWithChildren
   '/department/': typeof DepartmentIndexRoute
   '/tourist/groups/$groupId': typeof TouristGroupsGroupIdRoute
+  '/tourist/groups/': typeof TouristGroupsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
-  '/tourist': typeof TouristRouteWithChildren
   '/department/incidents': typeof DepartmentIncidentsRoute
   '/department/lost': typeof DepartmentLostRoute
   '/department/map': typeof DepartmentMapRoute
   '/department/sos': typeof DepartmentSosRoute
   '/department/zones': typeof DepartmentZonesRoute
-  '/tourist/groups': typeof TouristGroupsRouteWithChildren
   '/department': typeof DepartmentIndexRoute
   '/tourist/groups/$groupId': typeof TouristGroupsGroupIdRoute
+  '/tourist/groups': typeof TouristGroupsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -124,15 +116,14 @@ export interface FileRoutesById {
   '/department': typeof DepartmentRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
-  '/tourist': typeof TouristRouteWithChildren
   '/department/incidents': typeof DepartmentIncidentsRoute
   '/department/lost': typeof DepartmentLostRoute
   '/department/map': typeof DepartmentMapRoute
   '/department/sos': typeof DepartmentSosRoute
   '/department/zones': typeof DepartmentZonesRoute
-  '/tourist/groups': typeof TouristGroupsRouteWithChildren
   '/department/': typeof DepartmentIndexRoute
   '/tourist/groups/$groupId': typeof TouristGroupsGroupIdRoute
+  '/tourist/groups/': typeof TouristGroupsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -141,44 +132,41 @@ export interface FileRouteTypes {
     | '/department'
     | '/login'
     | '/signup'
-    | '/tourist'
     | '/department/incidents'
     | '/department/lost'
     | '/department/map'
     | '/department/sos'
     | '/department/zones'
-    | '/tourist/groups'
     | '/department/'
     | '/tourist/groups/$groupId'
+    | '/tourist/groups/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
     | '/signup'
-    | '/tourist'
     | '/department/incidents'
     | '/department/lost'
     | '/department/map'
     | '/department/sos'
     | '/department/zones'
-    | '/tourist/groups'
     | '/department'
     | '/tourist/groups/$groupId'
+    | '/tourist/groups'
   id:
     | '__root__'
     | '/'
     | '/department'
     | '/login'
     | '/signup'
-    | '/tourist'
     | '/department/incidents'
     | '/department/lost'
     | '/department/map'
     | '/department/sos'
     | '/department/zones'
-    | '/tourist/groups'
     | '/department/'
     | '/tourist/groups/$groupId'
+    | '/tourist/groups/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -186,18 +174,11 @@ export interface RootRouteChildren {
   DepartmentRoute: typeof DepartmentRouteWithChildren
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
-  TouristRoute: typeof TouristRouteWithChildren
+  TouristGroupsIndexRoute: typeof TouristGroupsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/tourist': {
-      id: '/tourist'
-      path: '/tourist'
-      fullPath: '/tourist'
-      preLoaderRoute: typeof TouristRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/signup': {
       id: '/signup'
       path: '/signup'
@@ -232,13 +213,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/department/'
       preLoaderRoute: typeof DepartmentIndexRouteImport
       parentRoute: typeof DepartmentRoute
-    }
-    '/tourist/groups': {
-      id: '/tourist/groups'
-      path: '/groups'
-      fullPath: '/tourist/groups'
-      preLoaderRoute: typeof TouristGroupsRouteImport
-      parentRoute: typeof TouristRoute
     }
     '/department/zones': {
       id: '/department/zones'
@@ -275,6 +249,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DepartmentIncidentsRouteImport
       parentRoute: typeof DepartmentRoute
     }
+    '/tourist/groups/': {
+      id: '/tourist/groups/'
+      path: '/tourist/groups'
+      fullPath: '/tourist/groups/'
+      preLoaderRoute: typeof TouristGroupsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tourist/groups/$groupId': {
       id: '/tourist/groups/$groupId'
       path: '/$groupId'
@@ -307,35 +288,12 @@ const DepartmentRouteWithChildren = DepartmentRoute._addFileChildren(
   DepartmentRouteChildren,
 )
 
-interface TouristGroupsRouteChildren {
-  TouristGroupsGroupIdRoute: typeof TouristGroupsGroupIdRoute
-}
-
-const TouristGroupsRouteChildren: TouristGroupsRouteChildren = {
-  TouristGroupsGroupIdRoute: TouristGroupsGroupIdRoute,
-}
-
-const TouristGroupsRouteWithChildren = TouristGroupsRoute._addFileChildren(
-  TouristGroupsRouteChildren,
-)
-
-interface TouristRouteChildren {
-  TouristGroupsRoute: typeof TouristGroupsRouteWithChildren
-}
-
-const TouristRouteChildren: TouristRouteChildren = {
-  TouristGroupsRoute: TouristGroupsRouteWithChildren,
-}
-
-const TouristRouteWithChildren =
-  TouristRoute._addFileChildren(TouristRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DepartmentRoute: DepartmentRouteWithChildren,
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
-  TouristRoute: TouristRouteWithChildren,
+  TouristGroupsIndexRoute: TouristGroupsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
