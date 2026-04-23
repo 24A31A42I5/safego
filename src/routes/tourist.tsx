@@ -417,8 +417,9 @@ function LostReportDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="h-16 bg-destructive text-destructive-foreground hover:bg-destructive/90">
-          <UserSearch className="mr-2 h-5 w-5" /> Report Lost Tourist
+        <Button className="h-20 flex-col gap-1 bg-destructive text-destructive-foreground hover:bg-destructive/90">
+          <UserSearch className="h-5 w-5" />
+          <span className="text-xs sm:text-sm">Report Lost</span>
         </Button>
       </DialogTrigger>
       <DialogContent>
