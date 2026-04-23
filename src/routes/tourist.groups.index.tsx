@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ProtectedShell } from "@/components/AppShell";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,11 +18,7 @@ import { toast } from "sonner";
 import { Plus, Users, ArrowRight, LogIn, ArrowLeft } from "lucide-react";
 
 export const Route = createFileRoute("/tourist/groups/")({
-  component: () => (
-    <ProtectedShell requireRole="tourist">
-      <GroupsPage />
-    </ProtectedShell>
-  ),
+  component: GroupsPage,
 });
 
 interface Group {
