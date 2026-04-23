@@ -1,198 +1,33 @@
-import { useEffect, useRef, useState } from "react";
-import { MapContainer, TileLayer, Marker, Polygon, Polyline, Popup, useMap } from "react-leaflet";
-import L from "leaflet";
-import type { Database } from "@/integrations/supabase/types";
+import { lazy, Suspense, useEffect, useState } from "react";
+import type { ComponentProps } from "react";
+import type { SafetyMap as SafetyMapClient } from "./SafetyMap.client";
 
-// Fix Leaflet default icon paths (Vite bundling issue)
-delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-});
+export type { Zone, MapMarker } from "./SafetyMap.client";
 
-export type Zone = Database["public"]["Tables"]["zones"]["Row"];
+const LazySafetyMap = lazy(() =>
+  import("./SafetyMap.client").then((m) => ({ default: m.SafetyMap }))
+);
 
-const ZONE_STYLES: Record<string, { color: string; fillColor: string }> = {
-  safe: { color: "#16a34a", fillColor: "#22c55e" },
-  caution: { color: "#d97706", fillColor: "#f59e0b" },
-  danger: { color: "#dc2626", fillColor: "#ef4444" },
-};
+type Props = ComponentProps<typeof SafetyMapClient>;
 
-export interface MapMarker {
-  id: string;
-  pos: [number, number];
-  label?: string;
-  color?: string;
-  avatarUrl?: string | null;
-  initials?: string;
-}
-
-interface SafetyMapProps {
-  center?: [number, number];
-  zoom?: number;
-  zones?: Zone[];
-  userLocation?: [number, number] | null;
-  markers?: MapMarker[];
-  height?: string;
-  panTo?: [number, number] | null;
-  onMapClick?: (latlng: [number, number]) => void;
-  cursor?: string;
-  routePolyline?: [number, number][] | null;
-  fitBounds?: [[number, number], [number, number]] | null;
-  children?: React.ReactNode;
-}
-
-function PanController({ panTo }: { panTo?: [number, number] | null }) {
-  const map = useMap();
-  useEffect(() => {
-    if (panTo) map.flyTo(panTo, Math.max(map.getZoom(), 15), { duration: 1.0 });
-  }, [panTo, map]);
-  return null;
-}
-
-function FitBoundsController({
-  bounds,
-}: {
-  bounds?: [[number, number], [number, number]] | null;
-}) {
-  const map = useMap();
-  useEffect(() => {
-    if (!bounds) return;
-    map.flyToBounds(bounds, { padding: [40, 40], duration: 1.0, maxZoom: 16 });
-  }, [bounds, map]);
-  return null;
-}
-
-function AutoCenter({ location }: { location?: [number, number] | null }) {
-  const map = useMap();
-  const didCenter = useRef(false);
-  useEffect(() => {
-    if (location && !didCenter.current) {
-      didCenter.current = true;
-      map.flyTo(location, 15, { duration: 1.2 });
-    }
-  }, [location, map]);
-  return null;
-}
-
-function ClickHandler({
-  onMapClick,
-}: {
-  onMapClick?: (latlng: [number, number]) => void;
-}) {
-  const map = useMap();
-  useEffect(() => {
-    if (!onMapClick) return;
-    const handler = (e: L.LeafletMouseEvent) => onMapClick([e.latlng.lat, e.latlng.lng]);
-    map.on("click", handler);
-    return () => {
-      map.off("click", handler);
-    };
-  }, [map, onMapClick]);
-  return null;
-}
-
-// Build a circular avatar divIcon
-function avatarIcon(opts: { avatarUrl?: string | null; initials?: string; color?: string }): L.DivIcon {
-  const bg = opts.color ?? "#3b82f6";
-  const inner = opts.avatarUrl
-    ? `<img src="${opts.avatarUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" />`
-    : `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:#fff;font-weight:600;font-size:13px;font-family:system-ui">${opts.initials ?? "•"}</div>`;
-  return L.divIcon({
-    className: "",
-    iconSize: [36, 36],
-    iconAnchor: [18, 18],
-    html: `<div style="width:36px;height:36px;border-radius:50%;border:3px solid ${bg};background:${bg};box-shadow:0 2px 8px rgba(0,0,0,.25);overflow:hidden">${inner}</div>`,
-  });
-}
-
-export function SafetyMap({
-  center = [13.0827, 80.2707], // Chennai default
-  zoom = 13,
-  zones = [],
-  userLocation,
-  markers = [],
-  height = "400px",
-  panTo,
-  onMapClick,
-  cursor,
-  routePolyline,
-  fitBounds,
-  children,
-}: SafetyMapProps) {
+export function SafetyMap(props: Props) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  if (!mounted) {
-    return (
-      <div
-        style={{ height }}
-        className="flex items-center justify-center rounded-lg bg-muted text-sm text-muted-foreground"
-      >
-        Loading map…
-      </div>
-    );
-  }
+  const fallback = (
+    <div
+      style={{ height: props.height ?? "400px" }}
+      className="flex items-center justify-center rounded-lg bg-muted text-sm text-muted-foreground"
+    >
+      Loading map…
+    </div>
+  );
+
+  if (!mounted) return fallback;
 
   return (
-    <div style={{ height }} className="overflow-hidden rounded-lg border">
-      <MapContainer
-        center={userLocation ?? center}
-        zoom={zoom}
-        style={{ height: "100%", width: "100%", cursor: cursor ?? "grab" }}
-        scrollWheelZoom
-      >
-        <TileLayer
-          attribution='&copy; OpenStreetMap'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <PanController panTo={panTo} />
-        <FitBoundsController bounds={fitBounds} />
-        <AutoCenter location={userLocation} />
-        <ClickHandler onMapClick={onMapClick} />
-        {zones.map((z) => {
-          const coords = z.coordinates as unknown as [number, number][];
-          if (!Array.isArray(coords) || coords.length < 3) return null;
-          const style = ZONE_STYLES[z.zone_type] ?? ZONE_STYLES.safe;
-          return (
-            <Polygon
-              key={z.id}
-              positions={coords}
-              pathOptions={{ ...style, fillOpacity: 0.3, weight: 2 }}
-            >
-              <Popup>
-                <strong className="capitalize">{z.zone_type} zone</strong>
-                <br />
-                {z.name}
-              </Popup>
-            </Polygon>
-          );
-        })}
-        {routePolyline && routePolyline.length > 1 && (
-          <Polyline
-            positions={routePolyline}
-            pathOptions={{ color: "#2563eb", weight: 5, opacity: 0.8 }}
-          />
-        )}
-        {userLocation && (
-          <Marker position={userLocation}>
-            <Popup>You are here</Popup>
-          </Marker>
-        )}
-        {markers.map((m) => {
-          const useCustom = m.avatarUrl || m.initials || m.color;
-          const iconProp = useCustom
-            ? { icon: avatarIcon({ avatarUrl: m.avatarUrl, initials: m.initials, color: m.color }) }
-            : {};
-          return (
-            <Marker key={m.id} position={m.pos} {...iconProp}>
-              {m.label && <Popup>{m.label}</Popup>}
-            </Marker>
-          );
-        })}
-        {children}
-      </MapContainer>
-    </div>
+    <Suspense fallback={fallback}>
+      <LazySafetyMap {...props} />
+    </Suspense>
   );
 }
