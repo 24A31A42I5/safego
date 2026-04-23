@@ -72,6 +72,17 @@ function DeptHome() {
     };
   }, []);
 
+  // Auto-focus map when arriving with focusLat/focusLng search params
+  useEffect(() => {
+    if (focusLat != null && focusLng != null) {
+      setPanTo([focusLat, focusLng]);
+      if (focusId) {
+        const found = alerts.find((a) => a.id === focusId);
+        if (found) setSelected(found);
+      }
+    }
+  }, [focusLat, focusLng, focusId, alerts]);
+
   const sosAlerts = alerts.filter((a) => a.alert_type === "sos");
   const zoneAlerts = alerts.filter((a) => a.alert_type === "zone_entry");
 
