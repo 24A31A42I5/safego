@@ -16,6 +16,7 @@ import { Route as DepartmentRouteImport } from './routes/department'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TouristIndexRouteImport } from './routes/tourist.index'
 import { Route as DepartmentIndexRouteImport } from './routes/department.index'
+import { Route as TouristGroupsRouteImport } from './routes/tourist.groups'
 import { Route as DepartmentZonesRouteImport } from './routes/department.zones'
 import { Route as DepartmentSosRouteImport } from './routes/department.sos'
 import { Route as DepartmentMapRouteImport } from './routes/department.map'
@@ -59,6 +60,11 @@ const DepartmentIndexRoute = DepartmentIndexRouteImport.update({
   path: '/',
   getParentRoute: () => DepartmentRoute,
 } as any)
+const TouristGroupsRoute = TouristGroupsRouteImport.update({
+  id: '/groups',
+  path: '/groups',
+  getParentRoute: () => TouristRoute,
+} as any)
 const DepartmentZonesRoute = DepartmentZonesRouteImport.update({
   id: '/zones',
   path: '/zones',
@@ -85,14 +91,14 @@ const DepartmentIncidentsRoute = DepartmentIncidentsRouteImport.update({
   getParentRoute: () => DepartmentRoute,
 } as any)
 const TouristGroupsIndexRoute = TouristGroupsIndexRouteImport.update({
-  id: '/groups/',
-  path: '/groups/',
-  getParentRoute: () => TouristRoute,
+  id: '/',
+  path: '/',
+  getParentRoute: () => TouristGroupsRoute,
 } as any)
 const TouristGroupsGroupIdRoute = TouristGroupsGroupIdRouteImport.update({
-  id: '/groups/$groupId',
-  path: '/groups/$groupId',
-  getParentRoute: () => TouristRoute,
+  id: '/$groupId',
+  path: '/$groupId',
+  getParentRoute: () => TouristGroupsRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -106,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/department/map': typeof DepartmentMapRoute
   '/department/sos': typeof DepartmentSosRoute
   '/department/zones': typeof DepartmentZonesRoute
+  '/tourist/groups': typeof TouristGroupsRouteWithChildren
   '/department/': typeof DepartmentIndexRoute
   '/tourist/': typeof TouristIndexRoute
   '/tourist/groups/$groupId': typeof TouristGroupsGroupIdRoute
@@ -137,6 +144,7 @@ export interface FileRoutesById {
   '/department/map': typeof DepartmentMapRoute
   '/department/sos': typeof DepartmentSosRoute
   '/department/zones': typeof DepartmentZonesRoute
+  '/tourist/groups': typeof TouristGroupsRouteWithChildren
   '/department/': typeof DepartmentIndexRoute
   '/tourist/': typeof TouristIndexRoute
   '/tourist/groups/$groupId': typeof TouristGroupsGroupIdRoute
@@ -155,6 +163,7 @@ export interface FileRouteTypes {
     | '/department/map'
     | '/department/sos'
     | '/department/zones'
+    | '/tourist/groups'
     | '/department/'
     | '/tourist/'
     | '/tourist/groups/$groupId'
@@ -185,6 +194,7 @@ export interface FileRouteTypes {
     | '/department/map'
     | '/department/sos'
     | '/department/zones'
+    | '/tourist/groups'
     | '/department/'
     | '/tourist/'
     | '/tourist/groups/$groupId'
@@ -250,6 +260,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DepartmentIndexRouteImport
       parentRoute: typeof DepartmentRoute
     }
+    '/tourist/groups': {
+      id: '/tourist/groups'
+      path: '/groups'
+      fullPath: '/tourist/groups'
+      preLoaderRoute: typeof TouristGroupsRouteImport
+      parentRoute: typeof TouristRoute
+    }
     '/department/zones': {
       id: '/department/zones'
       path: '/zones'
@@ -287,17 +304,17 @@ declare module '@tanstack/react-router' {
     }
     '/tourist/groups/': {
       id: '/tourist/groups/'
-      path: '/groups'
+      path: '/'
       fullPath: '/tourist/groups/'
       preLoaderRoute: typeof TouristGroupsIndexRouteImport
-      parentRoute: typeof TouristRoute
+      parentRoute: typeof TouristGroupsRoute
     }
     '/tourist/groups/$groupId': {
       id: '/tourist/groups/$groupId'
-      path: '/groups/$groupId'
+      path: '/$groupId'
       fullPath: '/tourist/groups/$groupId'
       preLoaderRoute: typeof TouristGroupsGroupIdRouteImport
-      parentRoute: typeof TouristRoute
+      parentRoute: typeof TouristGroupsRoute
     }
   }
 }
@@ -324,16 +341,28 @@ const DepartmentRouteWithChildren = DepartmentRoute._addFileChildren(
   DepartmentRouteChildren,
 )
 
-interface TouristRouteChildren {
-  TouristIndexRoute: typeof TouristIndexRoute
+interface TouristGroupsRouteChildren {
   TouristGroupsGroupIdRoute: typeof TouristGroupsGroupIdRoute
   TouristGroupsIndexRoute: typeof TouristGroupsIndexRoute
 }
 
-const TouristRouteChildren: TouristRouteChildren = {
-  TouristIndexRoute: TouristIndexRoute,
+const TouristGroupsRouteChildren: TouristGroupsRouteChildren = {
   TouristGroupsGroupIdRoute: TouristGroupsGroupIdRoute,
   TouristGroupsIndexRoute: TouristGroupsIndexRoute,
+}
+
+const TouristGroupsRouteWithChildren = TouristGroupsRoute._addFileChildren(
+  TouristGroupsRouteChildren,
+)
+
+interface TouristRouteChildren {
+  TouristGroupsRoute: typeof TouristGroupsRouteWithChildren
+  TouristIndexRoute: typeof TouristIndexRoute
+}
+
+const TouristRouteChildren: TouristRouteChildren = {
+  TouristGroupsRoute: TouristGroupsRouteWithChildren,
+  TouristIndexRoute: TouristIndexRoute,
 }
 
 const TouristRouteWithChildren =
