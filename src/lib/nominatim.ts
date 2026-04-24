@@ -92,6 +92,7 @@ export interface SuggestedPOI {
   category: "tourist" | "landmark" | "nature" | "heritage";
   near: [number, number];
   distanceKm?: number;
+  reason?: string;
 }
 
 const ALLOWED_KEYWORDS = [
