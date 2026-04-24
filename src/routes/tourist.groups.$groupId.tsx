@@ -361,17 +361,48 @@ function GroupDetail() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Live Group Map</CardTitle>
-          <CardDescription>
-            {clickToAdd
-              ? "Click anywhere on the map to add a stop."
-              : "Real-time positions, planned route and suggestions."}
-          </CardDescription>
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                Group Map
+                <Badge variant={isTourStarted ? "default" : "secondary"}>
+                  {isTourStarted ? "Live mode" : "Planning mode"}
+                </Badge>
+              </CardTitle>
+              <CardDescription>
+                {clickToAdd
+                  ? "Click anywhere on the map to add a stop."
+                  : isTourStarted
+                    ? "Live tracking on — members and your position update in real time."
+                    : "Map is static while you plan. Press Start Tour to begin live tracking."}
+              </CardDescription>
+            </div>
+            <Button
+              size="sm"
+              variant={isTourStarted ? "outline" : "default"}
+              onClick={() => {
+                if (!isTourStarted && waypoints.length < 2) {
+                  toast.error("Plan a route (start + destination) before starting the tour");
+                  return;
+                }
+                setIsTourStarted((v) => !v);
+                toast.success(
+                  isTourStarted ? "Tour ended — back to planning" : "Tour started — live tracking on"
+                );
+              }}
+            >
+              {isTourStarted ? "End tour" : "Start tour"}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <SafetyMap
-            userLocation={location}
-            markers={[...memberMarkers, ...stopMarkers, ...suggestionMarkers]}
+            userLocation={isTourStarted ? location : undefined}
+            markers={[
+              ...(isTourStarted ? memberMarkers : []),
+              ...stopMarkers,
+              ...suggestionMarkers,
+            ]}
             routePolyline={route?.coordinates ?? (waypoints.length >= 2 ? waypoints : null)}
             fitBounds={bounds}
             onMapClick={onMapClick}
