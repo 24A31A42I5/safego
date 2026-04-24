@@ -69,6 +69,7 @@ function GroupDetail() {
   const [suggestions, setSuggestions] = useState<SuggestedPOI[]>([]);
   const [aiBusy, setAiBusy] = useState(false);
   const [clickToAdd, setClickToAdd] = useState(false);
+  const [isTourStarted, setIsTourStarted] = useState(false);
   const lastAlertedRef = useRef<Map<string, "warning" | "critical">>(new Map());
 
   const waypoints = useMemo(() => stops.map((s) => s.pos), [stops]);
