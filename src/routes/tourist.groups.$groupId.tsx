@@ -144,8 +144,9 @@ function GroupDetail() {
     };
   }, [groupId]);
 
-  // Push my location every 10s
+  // Push my location every 10s — ONLY in Live Mode (after Start Tour)
   useEffect(() => {
+    if (!isTourStarted) return;
     if (!user || !location) return;
     const push = async () => {
       await supabase.from("member_locations").upsert(
@@ -162,7 +163,7 @@ function GroupDetail() {
     push();
     const t = setInterval(push, 10000);
     return () => clearInterval(t);
-  }, [user, location, groupId]);
+  }, [user, location, groupId, isTourStarted]);
 
   // Re-fetch OSRM route whenever stops change
   useEffect(() => {
