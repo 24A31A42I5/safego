@@ -199,9 +199,4 @@ export async function suggestTouristPlaces(
   return results.slice(0, 15);
 }
 
-// Sample N points along the waypoint polyline and query Nominatim for POIs near each.
-export async function suggestAlongRoute(
-  waypoints: [number, number][],
-  signal?: AbortSignal
-): Promise<SuggestedPOI[]> {
 // (Legacy suggestAlongRoute removed — use suggestTouristPlaces.)
