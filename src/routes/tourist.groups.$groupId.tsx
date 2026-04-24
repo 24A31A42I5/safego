@@ -23,7 +23,7 @@ import {
   Crosshair,
 } from "lucide-react";
 import { fetchRoute, formatDistance, formatDuration, type RouteResult } from "@/lib/routing";
-import { suggestTouristPlaces, type SuggestedPOI } from "@/lib/nominatim";
+import type { SuggestedPOI } from "@/lib/nominatim";
 import { haversine, pointsBounds } from "@/lib/geo";
 
 export const Route = createFileRoute("/tourist/groups/$groupId")({
@@ -119,6 +119,8 @@ function GroupDetail() {
     };
     load();
 
+    // Realtime subscription only when tour is live — keeps planning mode static
+    if (!isTourStarted) return;
     const ch = supabase
       .channel(`group-${groupId}`)
       .on(
@@ -142,7 +144,7 @@ function GroupDetail() {
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [groupId]);
+  }, [groupId, isTourStarted]);
 
   // Push my location every 10s — ONLY in Live Mode (after Start Tour)
   useEffect(() => {
@@ -266,15 +268,38 @@ function GroupDetail() {
     }
     setAiBusy(true);
     try {
-      const destination = waypoints[waypoints.length - 1];
       const samples =
         route?.coordinates && route.coordinates.length > 0
-          ? sampleAlong(route.coordinates, 4)
+          ? sampleAlong(route.coordinates, 6)
           : waypoints;
-      const places = await suggestTouristPlaces(destination, samples);
+      const { data, error } = await supabase.functions.invoke("tour-suggest", {
+        body: { waypoints: samples },
+      });
+      if (error) throw error;
+      const destination = waypoints[waypoints.length - 1];
+      const places: SuggestedPOI[] = (data?.places ?? []).map(
+        (p: {
+          name: string;
+          lat: number;
+          lon: number;
+          category: string;
+          reason?: string;
+          distance_km?: number;
+        }) => ({
+          name: p.name,
+          lat: p.lat,
+          lon: p.lon,
+          category: (["landmark", "nature", "heritage"].includes(p.category)
+            ? p.category
+            : "tourist") as SuggestedPOI["category"],
+          reason: p.reason,
+          near: destination,
+          distanceKm: p.distance_km,
+        })
+      );
       setSuggestions(places);
-      if (places.length === 0) toast.info("No tourist places found near destination");
-      else toast.success(`Found ${places.length} tourist places near your destination`);
+      if (places.length === 0) toast.info("No tourist places found near your route");
+      else toast.success(`Gemini found ${places.length} tourist places near your route`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Suggestion failed");
     } finally {
@@ -519,36 +544,42 @@ function GroupDetail() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" /> Tourist places near your destination
+              <Sparkles className="h-5 w-5 text-primary" /> AI suggestions near your route
             </CardTitle>
             <CardDescription>
-              Temples, forts, museums, parks and viewpoints — sorted by distance from your destination.
+              Tourist-only picks (temples, forts, museums, parks, viewpoints) — sorted by distance
+              from your destination.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="grid gap-2 sm:grid-cols-2">
             {suggestions.map((s, i) => (
-              <div key={i} className="flex items-start gap-2 rounded-md border p-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="truncate font-semibold">{s.name}</span>
-                    <Badge variant="outline" className="capitalize">
-                      {s.category}
-                    </Badge>
-                    {typeof s.distanceKm === "number" && (
-                      <Badge variant="secondary">{s.distanceKm.toFixed(1)} km from destination</Badge>
-                    )}
+              <div
+                key={i}
+                className="flex flex-col gap-2 rounded-lg border bg-card p-3 transition-colors hover:bg-accent/40"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-semibold">{s.name}</div>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      <Badge variant="outline" className="capitalize">
+                        {s.category}
+                      </Badge>
+                      {typeof s.distanceKm === "number" && (
+                        <Badge variant="secondary">{s.distanceKm.toFixed(1)} km away</Badge>
+                      )}
+                    </div>
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {s.lat.toFixed(4)}, {s.lon.toFixed(4)}
-                  </p>
+                  <Button
+                    size="sm"
+                    variant="default"
+                    onClick={() => addStop([s.lat, s.lon], s.name)}
+                  >
+                    <Plus className="mr-1 h-3.5 w-3.5" /> Add
+                  </Button>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => addStop([s.lat, s.lon], s.name)}
-                >
-                  <Plus className="mr-1 h-3.5 w-3.5" /> Add
-                </Button>
+                {s.reason && (
+                  <p className="text-xs leading-relaxed text-muted-foreground">{s.reason}</p>
+                )}
               </div>
             ))}
           </CardContent>
