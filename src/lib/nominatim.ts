@@ -89,8 +89,114 @@ export interface SuggestedPOI {
   name: string;
   lat: number;
   lon: number;
-  category: "tourist" | "food" | "landmark" | "nature";
+  category: "tourist" | "landmark" | "nature" | "heritage";
   near: [number, number];
+  distanceKm?: number;
+}
+
+const ALLOWED_KEYWORDS = [
+  "temple", "fort", "museum", "beach", "park", "hill", "viewpoint",
+  "lake", "monument", "palace", "garden", "waterfall", "heritage",
+  "shrine", "church", "cathedral", "mosque", "stupa", "tomb",
+  "tower", "ruins", "archaeological", "national park", "wildlife",
+  "viewpoint", "scenic", "lookout", "trail",
+];
+
+const REJECTED_KEYWORDS = [
+  "restaurant", "cafe", "hotel", "bar", "shop", "store", "mall",
+  "pub", "bakery", "fast food", "supermarket", "pharmacy", "atm",
+  "bank", "office", "clinic", "hospital", "school", "gas station",
+  "fuel", "parking",
+];
+
+function isTouristRelevant(name: string): boolean {
+  const n = name.toLowerCase();
+  if (REJECTED_KEYWORDS.some((k) => n.includes(k))) return false;
+  return ALLOWED_KEYWORDS.some((k) => n.includes(k));
+}
+
+function categorize(name: string): SuggestedPOI["category"] {
+  const n = name.toLowerCase();
+  if (/(park|hill|lake|waterfall|beach|garden|viewpoint|scenic|trail|wildlife|national park)/.test(n))
+    return "nature";
+  if (/(temple|shrine|church|cathedral|mosque|stupa|monastery)/.test(n)) return "heritage";
+  if (/(fort|palace|monument|tomb|tower|ruins|archaeological|heritage)/.test(n)) return "landmark";
+  return "tourist";
+}
+
+function haversineKm(a: [number, number], b: [number, number]): number {
+  const R = 6371;
+  const dLat = ((b[0] - a[0]) * Math.PI) / 180;
+  const dLon = ((b[1] - a[1]) * Math.PI) / 180;
+  const lat1 = (a[0] * Math.PI) / 180;
+  const lat2 = (b[0] * Math.PI) / 180;
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+// Tourist-only suggestions, prioritised near destination then along route corridor.
+export async function suggestTouristPlaces(
+  destination: [number, number],
+  routeSamples: [number, number][] = [],
+  signal?: AbortSignal
+): Promise<SuggestedPOI[]> {
+  const queries = [
+    "tourist attraction",
+    "viewpoint",
+    "monument",
+    "temple",
+    "fort",
+    "museum",
+    "park",
+  ];
+
+  const results: SuggestedPOI[] = [];
+  const dedupe = new Set<string>();
+
+  const pushPlaces = async (
+    center: [number, number],
+    radiusKm: number,
+    perQuery: number,
+    isDestination: boolean
+  ) => {
+    for (const q of queries) {
+      const places = await nearbyPlaces(center[0], center[1], q, radiusKm, signal, perQuery);
+      for (const p of places) {
+        const lat = parseFloat(p.lat);
+        const lon = parseFloat(p.lon);
+        const key = `${lat.toFixed(4)}|${lon.toFixed(4)}`;
+        if (dedupe.has(key)) continue;
+        const name = p.display_name.split(",")[0] || p.display_name;
+        if (!isTouristRelevant(name) && !isTouristRelevant(p.display_name)) continue;
+        dedupe.add(key);
+        results.push({
+          name,
+          lat,
+          lon,
+          category: categorize(name),
+          near: center,
+          distanceKm: haversineKm(destination, [lat, lon]),
+        });
+      }
+      await new Promise((r) => setTimeout(r, 200));
+      if (isDestination && results.length > 20) return;
+    }
+  };
+
+  // 1) Highest priority: near destination (tight radius, more results)
+  await pushPlaces(destination, 10, 4, true);
+
+  // 2) Along route corridor: sampled mid-points (excluding destination itself)
+  for (const s of routeSamples) {
+    if (haversineKm(s, destination) < 1) continue;
+    await pushPlaces(s, 6, 2, false);
+    if (results.length > 25) break;
+  }
+
+  // Sort by distance from destination (closest first)
+  results.sort((a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0));
+  return results.slice(0, 15);
 }
 
 // Sample N points along the waypoint polyline and query Nominatim for POIs near each.
