@@ -266,12 +266,15 @@ function GroupDetail() {
     }
     setAiBusy(true);
     try {
-      const places = await suggestAlongRoute(
-        route?.coordinates && route.coordinates.length > 0 ? sampleAlong(route.coordinates, 4) : waypoints
-      );
+      const destination = waypoints[waypoints.length - 1];
+      const samples =
+        route?.coordinates && route.coordinates.length > 0
+          ? sampleAlong(route.coordinates, 4)
+          : waypoints;
+      const places = await suggestTouristPlaces(destination, samples);
       setSuggestions(places);
-      if (places.length === 0) toast.info("No suggestions found nearby");
-      else toast.success(`Found ${places.length} places along your route`);
+      if (places.length === 0) toast.info("No tourist places found near destination");
+      else toast.success(`Found ${places.length} tourist places near your destination`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Suggestion failed");
     } finally {
