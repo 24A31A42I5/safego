@@ -23,7 +23,7 @@ import {
   Crosshair,
 } from "lucide-react";
 import { fetchRoute, formatDistance, formatDuration, type RouteResult } from "@/lib/routing";
-import { suggestAlongRoute, type SuggestedPOI } from "@/lib/nominatim";
+import { suggestTouristPlaces, type SuggestedPOI } from "@/lib/nominatim";
 import { haversine, pointsBounds } from "@/lib/geo";
 
 export const Route = createFileRoute("/tourist/groups/$groupId")({
@@ -69,6 +69,7 @@ function GroupDetail() {
   const [suggestions, setSuggestions] = useState<SuggestedPOI[]>([]);
   const [aiBusy, setAiBusy] = useState(false);
   const [clickToAdd, setClickToAdd] = useState(false);
+  const [isTourStarted, setIsTourStarted] = useState(false);
   const lastAlertedRef = useRef<Map<string, "warning" | "critical">>(new Map());
 
   const waypoints = useMemo(() => stops.map((s) => s.pos), [stops]);
@@ -143,8 +144,9 @@ function GroupDetail() {
     };
   }, [groupId]);
 
-  // Push my location every 10s
+  // Push my location every 10s — ONLY in Live Mode (after Start Tour)
   useEffect(() => {
+    if (!isTourStarted) return;
     if (!user || !location) return;
     const push = async () => {
       await supabase.from("member_locations").upsert(
@@ -161,7 +163,7 @@ function GroupDetail() {
     push();
     const t = setInterval(push, 10000);
     return () => clearInterval(t);
-  }, [user, location, groupId]);
+  }, [user, location, groupId, isTourStarted]);
 
   // Re-fetch OSRM route whenever stops change
   useEffect(() => {
@@ -264,12 +266,15 @@ function GroupDetail() {
     }
     setAiBusy(true);
     try {
-      const places = await suggestAlongRoute(
-        route?.coordinates && route.coordinates.length > 0 ? sampleAlong(route.coordinates, 4) : waypoints
-      );
+      const destination = waypoints[waypoints.length - 1];
+      const samples =
+        route?.coordinates && route.coordinates.length > 0
+          ? sampleAlong(route.coordinates, 4)
+          : waypoints;
+      const places = await suggestTouristPlaces(destination, samples);
       setSuggestions(places);
-      if (places.length === 0) toast.info("No suggestions found nearby");
-      else toast.success(`Found ${places.length} places along your route`);
+      if (places.length === 0) toast.info("No tourist places found near destination");
+      else toast.success(`Found ${places.length} tourist places near your destination`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Suggestion failed");
     } finally {
@@ -313,10 +318,11 @@ function GroupDetail() {
     initials: "★",
   }));
 
-  const allPoints: [number, number][] = [
-    ...locations.map((l) => [l.lat, l.lng] as [number, number]),
-    ...waypoints,
-  ];
+  // In planning mode, only fit to the planned route (static map).
+  // In live mode, fit to route + member positions so everyone stays visible.
+  const allPoints: [number, number][] = isTourStarted
+    ? [...locations.map((l) => [l.lat, l.lng] as [number, number]), ...waypoints]
+    : [...waypoints];
   const bounds = pointsBounds(allPoints);
 
   return (
@@ -355,17 +361,48 @@ function GroupDetail() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Live Group Map</CardTitle>
-          <CardDescription>
-            {clickToAdd
-              ? "Click anywhere on the map to add a stop."
-              : "Real-time positions, planned route and suggestions."}
-          </CardDescription>
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                Group Map
+                <Badge variant={isTourStarted ? "default" : "secondary"}>
+                  {isTourStarted ? "Live mode" : "Planning mode"}
+                </Badge>
+              </CardTitle>
+              <CardDescription>
+                {clickToAdd
+                  ? "Click anywhere on the map to add a stop."
+                  : isTourStarted
+                    ? "Live tracking on — members and your position update in real time."
+                    : "Map is static while you plan. Press Start Tour to begin live tracking."}
+              </CardDescription>
+            </div>
+            <Button
+              size="sm"
+              variant={isTourStarted ? "outline" : "default"}
+              onClick={() => {
+                if (!isTourStarted && waypoints.length < 2) {
+                  toast.error("Plan a route (start + destination) before starting the tour");
+                  return;
+                }
+                setIsTourStarted((v) => !v);
+                toast.success(
+                  isTourStarted ? "Tour ended — back to planning" : "Tour started — live tracking on"
+                );
+              }}
+            >
+              {isTourStarted ? "End tour" : "Start tour"}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <SafetyMap
-            userLocation={location}
-            markers={[...memberMarkers, ...stopMarkers, ...suggestionMarkers]}
+            userLocation={isTourStarted ? location : undefined}
+            markers={[
+              ...(isTourStarted ? memberMarkers : []),
+              ...stopMarkers,
+              ...suggestionMarkers,
+            ]}
             routePolyline={route?.coordinates ?? (waypoints.length >= 2 ? waypoints : null)}
             fitBounds={bounds}
             onMapClick={onMapClick}
@@ -482,19 +519,24 @@ function GroupDetail() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" /> Suggested places along your route
+              <Sparkles className="h-5 w-5 text-primary" /> Tourist places near your destination
             </CardTitle>
-            <CardDescription>From OpenStreetMap. Add any to your itinerary.</CardDescription>
+            <CardDescription>
+              Temples, forts, museums, parks and viewpoints — sorted by distance from your destination.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             {suggestions.map((s, i) => (
               <div key={i} className="flex items-start gap-2 rounded-md border p-3">
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="truncate font-semibold">{s.name}</span>
                     <Badge variant="outline" className="capitalize">
                       {s.category}
                     </Badge>
+                    {typeof s.distanceKm === "number" && (
+                      <Badge variant="secondary">{s.distanceKm.toFixed(1)} km from destination</Badge>
+                    )}
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {s.lat.toFixed(4)}, {s.lon.toFixed(4)}

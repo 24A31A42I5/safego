@@ -89,54 +89,114 @@ export interface SuggestedPOI {
   name: string;
   lat: number;
   lon: number;
-  category: "tourist" | "food" | "landmark" | "nature";
+  category: "tourist" | "landmark" | "nature" | "heritage";
   near: [number, number];
+  distanceKm?: number;
 }
 
-// Sample N points along the waypoint polyline and query Nominatim for POIs near each.
-export async function suggestAlongRoute(
-  waypoints: [number, number][],
+const ALLOWED_KEYWORDS = [
+  "temple", "fort", "museum", "beach", "park", "hill", "viewpoint",
+  "lake", "monument", "palace", "garden", "waterfall", "heritage",
+  "shrine", "church", "cathedral", "mosque", "stupa", "tomb",
+  "tower", "ruins", "archaeological", "national park", "wildlife",
+  "viewpoint", "scenic", "lookout", "trail",
+];
+
+const REJECTED_KEYWORDS = [
+  "restaurant", "cafe", "hotel", "bar", "shop", "store", "mall",
+  "pub", "bakery", "fast food", "supermarket", "pharmacy", "atm",
+  "bank", "office", "clinic", "hospital", "school", "gas station",
+  "fuel", "parking",
+];
+
+function isTouristRelevant(name: string): boolean {
+  const n = name.toLowerCase();
+  if (REJECTED_KEYWORDS.some((k) => n.includes(k))) return false;
+  return ALLOWED_KEYWORDS.some((k) => n.includes(k));
+}
+
+function categorize(name: string): SuggestedPOI["category"] {
+  const n = name.toLowerCase();
+  if (/(park|hill|lake|waterfall|beach|garden|viewpoint|scenic|trail|wildlife|national park)/.test(n))
+    return "nature";
+  if (/(temple|shrine|church|cathedral|mosque|stupa|monastery)/.test(n)) return "heritage";
+  if (/(fort|palace|monument|tomb|tower|ruins|archaeological|heritage)/.test(n)) return "landmark";
+  return "tourist";
+}
+
+function haversineKm(a: [number, number], b: [number, number]): number {
+  const R = 6371;
+  const dLat = ((b[0] - a[0]) * Math.PI) / 180;
+  const dLon = ((b[1] - a[1]) * Math.PI) / 180;
+  const lat1 = (a[0] * Math.PI) / 180;
+  const lat2 = (b[0] * Math.PI) / 180;
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+// Tourist-only suggestions, prioritised near destination then along route corridor.
+export async function suggestTouristPlaces(
+  destination: [number, number],
+  routeSamples: [number, number][] = [],
   signal?: AbortSignal
 ): Promise<SuggestedPOI[]> {
-  if (waypoints.length < 2) return [];
-  // Sample up to 4 points along the route (start, ~1/3, ~2/3, end).
-  const samples: [number, number][] = [];
-  const idxs = [0, Math.floor(waypoints.length / 3), Math.floor((2 * waypoints.length) / 3), waypoints.length - 1];
-  const seen = new Set<number>();
-  for (const i of idxs) {
-    if (!seen.has(i) && waypoints[i]) {
-      seen.add(i);
-      samples.push(waypoints[i]);
-    }
-  }
-
-  const queries: { q: string; cat: SuggestedPOI["category"] }[] = [
-    { q: "tourist attraction", cat: "tourist" },
-    { q: "restaurant", cat: "food" },
-    { q: "landmark", cat: "landmark" },
+  const queries = [
+    "tourist attraction",
+    "viewpoint",
+    "monument",
+    "temple",
+    "fort",
+    "museum",
+    "park",
   ];
 
   const results: SuggestedPOI[] = [];
   const dedupe = new Set<string>();
 
-  for (const [lat, lon] of samples) {
-    for (const { q, cat } of queries) {
-      const places = await nearbyPlaces(lat, lon, q, 8, signal, 3);
+  const pushPlaces = async (
+    center: [number, number],
+    radiusKm: number,
+    perQuery: number,
+    isDestination: boolean
+  ) => {
+    for (const q of queries) {
+      const places = await nearbyPlaces(center[0], center[1], q, radiusKm, signal, perQuery);
       for (const p of places) {
-        const key = `${p.lat.slice(0, 7)}|${p.lon.slice(0, 7)}`;
+        const lat = parseFloat(p.lat);
+        const lon = parseFloat(p.lon);
+        const key = `${lat.toFixed(4)}|${lon.toFixed(4)}`;
         if (dedupe.has(key)) continue;
+        const name = p.display_name.split(",")[0] || p.display_name;
+        if (!isTouristRelevant(name) && !isTouristRelevant(p.display_name)) continue;
         dedupe.add(key);
         results.push({
-          name: p.display_name.split(",")[0] || p.display_name,
-          lat: parseFloat(p.lat),
-          lon: parseFloat(p.lon),
-          category: cat,
-          near: [lat, lon],
+          name,
+          lat,
+          lon,
+          category: categorize(name),
+          near: center,
+          distanceKm: haversineKm(destination, [lat, lon]),
         });
       }
-      // small delay to be polite to public Nominatim
-      await new Promise((r) => setTimeout(r, 250));
+      await new Promise((r) => setTimeout(r, 200));
+      if (isDestination && results.length > 20) return;
     }
+  };
+
+  // 1) Highest priority: near destination (tight radius, more results)
+  await pushPlaces(destination, 10, 4, true);
+
+  // 2) Along route corridor: sampled mid-points (excluding destination itself)
+  for (const s of routeSamples) {
+    if (haversineKm(s, destination) < 1) continue;
+    await pushPlaces(s, 6, 2, false);
+    if (results.length > 25) break;
   }
-  return results.slice(0, 12);
+
+  // Sort by distance from destination (closest first)
+  results.sort((a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0));
+  return results.slice(0, 15);
 }
+
+// (Legacy suggestAlongRoute removed — use suggestTouristPlaces.)
