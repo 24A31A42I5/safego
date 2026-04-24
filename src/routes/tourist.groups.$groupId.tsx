@@ -318,10 +318,11 @@ function GroupDetail() {
     initials: "★",
   }));
 
-  const allPoints: [number, number][] = [
-    ...locations.map((l) => [l.lat, l.lng] as [number, number]),
-    ...waypoints,
-  ];
+  // In planning mode, only fit to the planned route (static map).
+  // In live mode, fit to route + member positions so everyone stays visible.
+  const allPoints: [number, number][] = isTourStarted
+    ? [...locations.map((l) => [l.lat, l.lng] as [number, number]), ...waypoints]
+    : [...waypoints];
   const bounds = pointsBounds(allPoints);
 
   return (
