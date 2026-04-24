@@ -23,7 +23,7 @@ import {
   Crosshair,
 } from "lucide-react";
 import { fetchRoute, formatDistance, formatDuration, type RouteResult } from "@/lib/routing";
-import { suggestAlongRoute, type SuggestedPOI } from "@/lib/nominatim";
+import { suggestTouristPlaces, type SuggestedPOI } from "@/lib/nominatim";
 import { haversine, pointsBounds } from "@/lib/geo";
 
 export const Route = createFileRoute("/tourist/groups/$groupId")({
