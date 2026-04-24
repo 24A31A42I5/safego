@@ -544,36 +544,42 @@ function GroupDetail() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" /> Tourist places near your destination
+              <Sparkles className="h-5 w-5 text-primary" /> AI suggestions near your route
             </CardTitle>
             <CardDescription>
-              Temples, forts, museums, parks and viewpoints — sorted by distance from your destination.
+              Tourist-only picks (temples, forts, museums, parks, viewpoints) — sorted by distance
+              from your destination.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="grid gap-2 sm:grid-cols-2">
             {suggestions.map((s, i) => (
-              <div key={i} className="flex items-start gap-2 rounded-md border p-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="truncate font-semibold">{s.name}</span>
-                    <Badge variant="outline" className="capitalize">
-                      {s.category}
-                    </Badge>
-                    {typeof s.distanceKm === "number" && (
-                      <Badge variant="secondary">{s.distanceKm.toFixed(1)} km from destination</Badge>
-                    )}
+              <div
+                key={i}
+                className="flex flex-col gap-2 rounded-lg border bg-card p-3 transition-colors hover:bg-accent/40"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-semibold">{s.name}</div>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      <Badge variant="outline" className="capitalize">
+                        {s.category}
+                      </Badge>
+                      {typeof s.distanceKm === "number" && (
+                        <Badge variant="secondary">{s.distanceKm.toFixed(1)} km away</Badge>
+                      )}
+                    </div>
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {s.lat.toFixed(4)}, {s.lon.toFixed(4)}
-                  </p>
+                  <Button
+                    size="sm"
+                    variant="default"
+                    onClick={() => addStop([s.lat, s.lon], s.name)}
+                  >
+                    <Plus className="mr-1 h-3.5 w-3.5" /> Add
+                  </Button>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => addStop([s.lat, s.lon], s.name)}
-                >
-                  <Plus className="mr-1 h-3.5 w-3.5" /> Add
-                </Button>
+                {s.reason && (
+                  <p className="text-xs leading-relaxed text-muted-foreground">{s.reason}</p>
+                )}
               </div>
             ))}
           </CardContent>
