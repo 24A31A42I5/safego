@@ -22,19 +22,26 @@ Deno.serve(async (req) => {
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
 
+    const start = waypoints[0] as [number, number];
+    const destination = waypoints[waypoints.length - 1] as [number, number];
     const wpStr = waypoints
-      .map((w: [number, number], i: number) => `Stop ${i + 1}: ${w[0]}, ${w[1]}`)
+      .map((w: [number, number], i: number) => {
+        const tag =
+          i === 0 ? "START" : i === waypoints.length - 1 ? "DESTINATION" : `STOP ${i}`;
+        return `${tag}: ${w[0].toFixed(5)}, ${w[1].toFixed(5)}`;
+      })
       .join("\n");
 
-    const systemPrompt = `You are a knowledgeable travel assistant. Given a list of GPS waypoints (latitude, longitude) along a planned tour route, suggest 5-8 popular tourist places, landmarks, food/rest stops, or hidden gems within roughly 20-50 km of the route.
+    const systemPrompt = `You are an expert local travel guide with deep geographic knowledge. Given a planned tour route (start, optional stops, destination) as GPS coordinates, suggest 6-10 REAL tourist places worth visiting near the route — strongly preferring places near the DESTINATION and along the route corridor.
 
-For each suggestion, include:
-- name (string)
-- category (one of: "landmark", "food", "nature", "culture", "rest_stop")
-- reason (1-2 sentence explanation of why it's worth visiting)
-- distance_km (approximate distance from the route, integer)
+STRICT RULES:
+- Suggest ONLY tourist-relevant places: temples, forts, palaces, museums, monuments, heritage sites, beaches, hills, viewpoints, lakes, waterfalls, parks, gardens, national parks, scenic spots, archaeological sites.
+- DO NOT suggest restaurants, cafes, hotels, shops, malls, bars, pharmacies, or generic businesses.
+- Use REAL, well-known places that actually exist near those coordinates. Use accurate names.
+- Prioritize places within 20 km of the DESTINATION first, then within 30 km of the route.
+- Provide accurate latitude/longitude (you must know the real coordinates of the place).
 
-Use your geographic knowledge of the region the coordinates are in. Be specific and accurate. If the coordinates are in India, use real Indian destinations.`;
+For each suggestion include: name, category, reason (1 short sentence), lat, lon, distance_km from destination.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -46,14 +53,17 @@ Use your geographic knowledge of the region the coordinates are in. Be specific 
         model: "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Tour waypoints:\n${wpStr}\n\nSuggest places worth visiting along this route.` },
+          {
+            role: "user",
+            content: `Planned route:\n${wpStr}\n\nDESTINATION: ${destination[0]}, ${destination[1]}\nSTART: ${start[0]}, ${start[1]}\n\nSuggest 6-10 real tourist places near the destination and along the route.`,
+          },
         ],
         tools: [
           {
             type: "function",
             function: {
               name: "suggest_places",
-              description: "Return a list of suggested tourist places along the route.",
+              description: "Return tourist places near the planned route.",
               parameters: {
                 type: "object",
                 properties: {
@@ -65,12 +75,14 @@ Use your geographic knowledge of the region the coordinates are in. Be specific 
                         name: { type: "string" },
                         category: {
                           type: "string",
-                          enum: ["landmark", "food", "nature", "culture", "rest_stop"],
+                          enum: ["landmark", "nature", "culture", "heritage", "viewpoint"],
                         },
                         reason: { type: "string" },
+                        lat: { type: "number" },
+                        lon: { type: "number" },
                         distance_km: { type: "number" },
                       },
-                      required: ["name", "category", "reason", "distance_km"],
+                      required: ["name", "category", "reason", "lat", "lon", "distance_km"],
                       additionalProperties: false,
                     },
                   },
