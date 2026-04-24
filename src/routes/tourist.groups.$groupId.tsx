@@ -1,15 +1,29 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { supabase } from "@/integrations/supabase/client";
 import { SafetyMap, type MapMarker } from "@/components/SafetyMap";
+import { PlaceSearch } from "@/components/PlaceSearch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ArrowLeft, Copy, Users, Sparkles, AlertTriangle, MapPin } from "lucide-react";
+import {
+  ArrowLeft,
+  Copy,
+  Users,
+  Sparkles,
+  AlertTriangle,
+  MapPin,
+  Plus,
+  X,
+  ArrowUp,
+  ArrowDown,
+  Crosshair,
+} from "lucide-react";
 import { fetchRoute, formatDistance, formatDuration, type RouteResult } from "@/lib/routing";
+import { suggestAlongRoute, type SuggestedPOI } from "@/lib/nominatim";
 import { haversine, pointsBounds } from "@/lib/geo";
 
 export const Route = createFileRoute("/tourist/groups/$groupId")({
@@ -36,11 +50,9 @@ interface MemberProfile {
   full_name: string;
 }
 
-interface SuggestedPlace {
-  name: string;
-  reason: string;
-  distance_km?: number;
-  category?: string;
+interface Stop {
+  pos: [number, number];
+  label: string;
 }
 
 const COLORS = ["#3b82f6", "#ec4899", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#06b6d4", "#84cc16"];
@@ -52,11 +64,14 @@ function GroupDetail() {
   const [group, setGroup] = useState<GroupRow | null>(null);
   const [members, setMembers] = useState<MemberProfile[]>([]);
   const [locations, setLocations] = useState<MemberLoc[]>([]);
-  const [waypoints, setWaypoints] = useState<[number, number][]>([]);
+  const [stops, setStops] = useState<Stop[]>([]);
   const [route, setRoute] = useState<RouteResult | null>(null);
-  const [suggestions, setSuggestions] = useState<SuggestedPlace[]>([]);
+  const [suggestions, setSuggestions] = useState<SuggestedPOI[]>([]);
   const [aiBusy, setAiBusy] = useState(false);
+  const [clickToAdd, setClickToAdd] = useState(false);
   const lastAlertedRef = useRef<Map<string, "warning" | "critical">>(new Map());
+
+  const waypoints = useMemo(() => stops.map((s) => s.pos), [stops]);
 
   // Load group + members + initial locations
   useEffect(() => {
@@ -71,8 +86,16 @@ function GroupDetail() {
         return;
       }
       setGroup(g);
-      const wp = Array.isArray(g.waypoints) ? (g.waypoints as [number, number][]) : [];
-      setWaypoints(wp);
+      const wp = Array.isArray(g.waypoints) ? (g.waypoints as unknown[]) : [];
+      // Support both legacy [lat,lng] and new {pos,label}
+      const parsed: Stop[] = wp.map((w, i) => {
+        if (Array.isArray(w) && w.length === 2) {
+          return { pos: [w[0] as number, w[1] as number], label: `Stop ${i + 1}` };
+        }
+        const o = w as { pos?: [number, number]; label?: string };
+        return { pos: o.pos ?? [0, 0], label: o.label ?? `Stop ${i + 1}` };
+      });
+      setStops(parsed);
 
       const { data: ms } = await supabase
         .from("tour_group_members")
@@ -120,29 +143,27 @@ function GroupDetail() {
     };
   }, [groupId]);
 
-  // Push my location to the group every 10s
+  // Push my location every 10s
   useEffect(() => {
     if (!user || !location) return;
     const push = async () => {
-      await supabase
-        .from("member_locations")
-        .upsert(
-          {
-            group_id: groupId,
-            user_id: user.id,
-            lat: location[0],
-            lng: location[1],
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "group_id,user_id" }
-        );
+      await supabase.from("member_locations").upsert(
+        {
+          group_id: groupId,
+          user_id: user.id,
+          lat: location[0],
+          lng: location[1],
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "group_id,user_id" }
+      );
     };
     push();
     const t = setInterval(push, 10000);
     return () => clearInterval(t);
   }, [user, location, groupId]);
 
-  // Fetch route between waypoints when set
+  // Re-fetch OSRM route whenever stops change
   useEffect(() => {
     if (waypoints.length < 2) {
       setRoute(null);
@@ -175,7 +196,6 @@ function GroupDetail() {
             ? `🚨 ${otherName} is ${dKm.toFixed(1)} km away — critical separation!`
             : `⚠ ${otherName} is ${dKm.toFixed(1)} km away from the group`;
         toast(msg, { duration: 6000 });
-        // Persist alert (other members' realtime sub will also fire)
         supabase.from("separation_alerts").insert({
           group_id: groupId,
           user_id: other.user_id,
@@ -198,52 +218,66 @@ function GroupDetail() {
     toast.success("Invite link copied!");
   };
 
-  const addWaypoint = () => {
-    if (!location) {
-      toast.error("Location required");
-      return;
-    }
-    setWaypoints((p) => [...p, location]);
+  // ---- Stop management ----
+  const addStop = (pos: [number, number], label: string) => {
+    setStops((prev) => [...prev, { pos, label }]);
+  };
+  const removeStop = (idx: number) => setStops((prev) => prev.filter((_, i) => i !== idx));
+  const moveStop = (idx: number, dir: -1 | 1) =>
+    setStops((prev) => {
+      const next = [...prev];
+      const j = idx + dir;
+      if (j < 0 || j >= next.length) return prev;
+      [next[idx], next[j]] = [next[j], next[idx]];
+      return next;
+    });
+  const addMyLocation = () => {
+    if (!location) return toast.error("Location not available");
+    addStop(location, "My location");
+  };
+
+  const onMapClick = (latlng: [number, number]) => {
+    if (!clickToAdd) return;
+    addStop(latlng, `Stop @ ${latlng[0].toFixed(3)}, ${latlng[1].toFixed(3)}`);
   };
 
   const saveRoute = async () => {
     if (!group) return;
     const { error } = await supabase
       .from("tour_groups")
-      .update({ waypoints: waypoints as unknown as never })
+      .update({ waypoints: stops as unknown as never })
       .eq("id", group.id);
     if (error) toast.error(error.message);
     else toast.success("Route saved");
   };
 
   const clearRoute = () => {
-    setWaypoints([]);
+    setStops([]);
     setRoute(null);
     setSuggestions([]);
   };
 
   const askAI = async () => {
     if (waypoints.length < 2) {
-      toast.error("Add at least 2 waypoints first");
+      toast.error("Add a start and destination first");
       return;
     }
     setAiBusy(true);
     try {
-      const { data, error } = await supabase.functions.invoke("tour-suggest", {
-        body: { waypoints },
-      });
-      if (error) throw error;
-      const places = (data?.places ?? []) as SuggestedPlace[];
+      const places = await suggestAlongRoute(
+        route?.coordinates && route.coordinates.length > 0 ? sampleAlong(route.coordinates, 4) : waypoints
+      );
       setSuggestions(places);
-      if (places.length === 0) toast.info("No suggestions found");
+      if (places.length === 0) toast.info("No suggestions found nearby");
+      else toast.success(`Found ${places.length} places along your route`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "AI suggestion failed");
+      toast.error(e instanceof Error ? e.message : "Suggestion failed");
     } finally {
       setAiBusy(false);
     }
   };
 
-  // Build markers for each member with profile color
+  // Markers
   const memberMarkers: MapMarker[] = locations.map((loc, idx) => {
     const m = members.find((mm) => mm.id === loc.user_id);
     const name = m?.full_name ?? "Member";
@@ -263,16 +297,26 @@ function GroupDetail() {
     };
   });
 
-  // Waypoint markers
-  const waypointMarkers: MapMarker[] = waypoints.map((p, i) => ({
+  const stopMarkers: MapMarker[] = stops.map((s, i) => ({
     id: `wp-${i}`,
-    pos: p,
-    label: `Stop ${i + 1}`,
-    color: "#0ea5e9",
-    initials: `${i + 1}`,
+    pos: s.pos,
+    label: `${i === 0 ? "Start" : i === stops.length - 1 ? "Destination" : `Stop ${i}`}: ${s.label}`,
+    color: i === 0 ? "#16a34a" : i === stops.length - 1 ? "#dc2626" : "#0ea5e9",
+    initials: i === 0 ? "A" : i === stops.length - 1 ? "B" : `${i}`,
   }));
 
-  const allPoints = [...locations.map((l) => [l.lat, l.lng] as [number, number]), ...waypoints];
+  const suggestionMarkers: MapMarker[] = suggestions.map((s, i) => ({
+    id: `sug-${i}`,
+    pos: [s.lat, s.lon],
+    label: `${s.name} (${s.category})`,
+    color: "#a855f7",
+    initials: "★",
+  }));
+
+  const allPoints: [number, number][] = [
+    ...locations.map((l) => [l.lat, l.lng] as [number, number]),
+    ...waypoints,
+  ];
   const bounds = pointsBounds(allPoints);
 
   return (
@@ -298,7 +342,11 @@ function GroupDetail() {
             <Copy className="mr-1 h-4 w-4" /> Copy invite link
           </Button>
           {members.map((m, i) => (
-            <Badge key={m.id} variant="secondary" style={{ borderLeft: `4px solid ${COLORS[i % COLORS.length]}` }}>
+            <Badge
+              key={m.id}
+              variant="secondary"
+              style={{ borderLeft: `4px solid ${COLORS[i % COLORS.length]}` }}
+            >
               {m.full_name}
             </Badge>
           ))}
@@ -308,55 +356,124 @@ function GroupDetail() {
       <Card>
         <CardHeader>
           <CardTitle>Live Group Map</CardTitle>
-          <CardDescription>Real-time positions of every member.</CardDescription>
+          <CardDescription>
+            {clickToAdd
+              ? "Click anywhere on the map to add a stop."
+              : "Real-time positions, planned route and suggestions."}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <SafetyMap
             userLocation={location}
-            markers={[...memberMarkers, ...waypointMarkers]}
+            markers={[...memberMarkers, ...stopMarkers, ...suggestionMarkers]}
             routePolyline={route?.coordinates ?? (waypoints.length >= 2 ? waypoints : null)}
             fitBounds={bounds}
+            onMapClick={onMapClick}
+            cursor={clickToAdd ? "crosshair" : undefined}
             height="420px"
           />
           {route && (
-            <p className="mt-2 text-xs text-muted-foreground">
-              Route: <b>{formatDistance(route.distance)}</b> ·{" "}
-              <b>{formatDuration(route.duration)}</b>
-            </p>
+            <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
+              <span>
+                Distance: <b className="text-foreground">{formatDistance(route.distance)}</b>
+              </span>
+              <span>
+                Duration: <b className="text-foreground">{formatDuration(route.duration)}</b>
+              </span>
+              <span>
+                Stops: <b className="text-foreground">{stops.length}</b>
+              </span>
+            </div>
           )}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Tour Route</CardTitle>
+          <CardTitle>Plan your route</CardTitle>
           <CardDescription>
-            Add waypoints to plan a round trip. Then ask AI to suggest nearby places.
+            Search places, add stops, reorder them — route updates automatically.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
+          <PlaceSearch
+            placeholder={stops.length === 0 ? "Start location" : stops.length === 1 ? "Destination" : "Add a stop"}
+            onSelect={(p) => addStop([p.lat, p.lon], p.label.split(",").slice(0, 2).join(", "))}
+          />
+
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" onClick={addWaypoint} disabled={!location}>
-              <MapPin className="mr-1 h-4 w-4" /> Add my location as stop
+            <Button size="sm" variant="outline" onClick={addMyLocation} disabled={!location}>
+              <Crosshair className="mr-1 h-4 w-4" /> Use my location
             </Button>
-            <Button size="sm" variant="outline" onClick={saveRoute} disabled={waypoints.length === 0}>
+            <Button
+              size="sm"
+              variant={clickToAdd ? "default" : "outline"}
+              onClick={() => setClickToAdd((v) => !v)}
+            >
+              <Plus className="mr-1 h-4 w-4" /> {clickToAdd ? "Click map to add (on)" : "Click map to add"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={saveRoute} disabled={stops.length === 0}>
               Save route
             </Button>
-            <Button size="sm" variant="outline" onClick={clearRoute} disabled={waypoints.length === 0}>
+            <Button size="sm" variant="outline" onClick={clearRoute} disabled={stops.length === 0}>
               Clear
             </Button>
             <Button size="sm" onClick={askAI} disabled={aiBusy || waypoints.length < 2}>
-              <Sparkles className="mr-1 h-4 w-4" /> {aiBusy ? "Thinking…" : "AI suggestions"}
+              <Sparkles className="mr-1 h-4 w-4" /> {aiBusy ? "Searching…" : "Suggestions"}
             </Button>
           </div>
-          {waypoints.length > 0 && (
-            <ol className="ml-5 list-decimal space-y-1 text-sm text-muted-foreground">
-              {waypoints.map((w, i) => (
-                <li key={i}>
-                  Stop {i + 1}: {w[0].toFixed(4)}, {w[1].toFixed(4)}
+
+          {stops.length > 0 ? (
+            <ul className="divide-y rounded-md border">
+              {stops.map((s, i) => (
+                <li key={i} className="flex items-center gap-2 p-2 text-sm">
+                  <span
+                    className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+                    style={{
+                      background:
+                        i === 0 ? "#16a34a" : i === stops.length - 1 ? "#dc2626" : "#0ea5e9",
+                    }}
+                  >
+                    {i === 0 ? "A" : i === stops.length - 1 ? "B" : i}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">{s.label}</span>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7"
+                    onClick={() => moveStop(i, -1)}
+                    disabled={i === 0}
+                    aria-label="Move up"
+                  >
+                    <ArrowUp className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7"
+                    onClick={() => moveStop(i, 1)}
+                    disabled={i === stops.length - 1}
+                    aria-label="Move down"
+                  >
+                    <ArrowDown className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 text-destructive"
+                    onClick={() => removeStop(i)}
+                    aria-label="Remove stop"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
                 </li>
               ))}
-            </ol>
+            </ul>
+          ) : (
+            <p className="rounded-md border border-dashed p-3 text-center text-xs text-muted-foreground">
+              <MapPin className="mr-1 inline h-3.5 w-3.5" />
+              Search a start location above to begin planning.
+            </p>
           )}
         </CardContent>
       </Card>
@@ -365,20 +482,31 @@ function GroupDetail() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" /> AI Suggested Places
+              <Sparkles className="h-5 w-5 text-primary" /> Suggested places along your route
             </CardTitle>
+            <CardDescription>From OpenStreetMap. Add any to your itinerary.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             {suggestions.map((s, i) => (
-              <div key={i} className="rounded-md border p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="font-semibold">{s.name}</div>
-                  {s.category && <Badge variant="outline">{s.category}</Badge>}
+              <div key={i} className="flex items-start gap-2 rounded-md border p-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate font-semibold">{s.name}</span>
+                    <Badge variant="outline" className="capitalize">
+                      {s.category}
+                    </Badge>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {s.lat.toFixed(4)}, {s.lon.toFixed(4)}
+                  </p>
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">{s.reason}</p>
-                {typeof s.distance_km === "number" && (
-                  <p className="mt-1 text-xs text-muted-foreground">~{s.distance_km} km from route</p>
-                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => addStop([s.lat, s.lon], s.name)}
+                >
+                  <Plus className="mr-1 h-3.5 w-3.5" /> Add
+                </Button>
               </div>
             ))}
           </CardContent>
@@ -397,4 +525,15 @@ function GroupDetail() {
       </Card>
     </div>
   );
+}
+
+// Sample N evenly spaced points along a polyline
+function sampleAlong(line: [number, number][], n: number): [number, number][] {
+  if (line.length <= n) return line;
+  const out: [number, number][] = [];
+  for (let i = 0; i < n; i++) {
+    const idx = Math.round((i * (line.length - 1)) / (n - 1));
+    out.push(line[idx]);
+  }
+  return out;
 }
