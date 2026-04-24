@@ -268,15 +268,38 @@ function GroupDetail() {
     }
     setAiBusy(true);
     try {
-      const destination = waypoints[waypoints.length - 1];
       const samples =
         route?.coordinates && route.coordinates.length > 0
-          ? sampleAlong(route.coordinates, 4)
+          ? sampleAlong(route.coordinates, 6)
           : waypoints;
-      const places = await suggestTouristPlaces(destination, samples);
+      const { data, error } = await supabase.functions.invoke("tour-suggest", {
+        body: { waypoints: samples },
+      });
+      if (error) throw error;
+      const destination = waypoints[waypoints.length - 1];
+      const places: SuggestedPOI[] = (data?.places ?? []).map(
+        (p: {
+          name: string;
+          lat: number;
+          lon: number;
+          category: string;
+          reason?: string;
+          distance_km?: number;
+        }) => ({
+          name: p.name,
+          lat: p.lat,
+          lon: p.lon,
+          category: (["landmark", "nature", "heritage"].includes(p.category)
+            ? p.category
+            : "tourist") as SuggestedPOI["category"],
+          reason: p.reason,
+          near: destination,
+          distanceKm: p.distance_km,
+        })
+      );
       setSuggestions(places);
-      if (places.length === 0) toast.info("No tourist places found near destination");
-      else toast.success(`Found ${places.length} tourist places near your destination`);
+      if (places.length === 0) toast.info("No tourist places found near your route");
+      else toast.success(`Gemini found ${places.length} tourist places near your route`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Suggestion failed");
     } finally {
