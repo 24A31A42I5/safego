@@ -23,7 +23,7 @@ import {
   Crosshair,
 } from "lucide-react";
 import { fetchRoute, formatDistance, formatDuration, type RouteResult } from "@/lib/routing";
-import { suggestTouristPlaces, type SuggestedPOI } from "@/lib/nominatim";
+import type { SuggestedPOI } from "@/lib/nominatim";
 import { haversine, pointsBounds } from "@/lib/geo";
 
 export const Route = createFileRoute("/tourist/groups/$groupId")({
@@ -119,6 +119,8 @@ function GroupDetail() {
     };
     load();
 
+    // Realtime subscription only when tour is live — keeps planning mode static
+    if (!isTourStarted) return;
     const ch = supabase
       .channel(`group-${groupId}`)
       .on(
@@ -142,7 +144,7 @@ function GroupDetail() {
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [groupId]);
+  }, [groupId, isTourStarted]);
 
   // Push my location every 10s — ONLY in Live Mode (after Start Tour)
   useEffect(() => {
