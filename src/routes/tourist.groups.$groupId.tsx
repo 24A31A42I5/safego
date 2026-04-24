@@ -519,19 +519,24 @@ function GroupDetail() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" /> Suggested places along your route
+              <Sparkles className="h-5 w-5 text-primary" /> Tourist places near your destination
             </CardTitle>
-            <CardDescription>From OpenStreetMap. Add any to your itinerary.</CardDescription>
+            <CardDescription>
+              Temples, forts, museums, parks and viewpoints — sorted by distance from your destination.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             {suggestions.map((s, i) => (
               <div key={i} className="flex items-start gap-2 rounded-md border p-3">
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="truncate font-semibold">{s.name}</span>
                     <Badge variant="outline" className="capitalize">
                       {s.category}
                     </Badge>
+                    {typeof s.distanceKm === "number" && (
+                      <Badge variant="secondary">{s.distanceKm.toFixed(1)} km from destination</Badge>
+                    )}
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {s.lat.toFixed(4)}, {s.lon.toFixed(4)}
