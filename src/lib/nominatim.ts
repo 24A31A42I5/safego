@@ -204,45 +204,4 @@ export async function suggestAlongRoute(
   waypoints: [number, number][],
   signal?: AbortSignal
 ): Promise<SuggestedPOI[]> {
-  if (waypoints.length < 2) return [];
-  // Sample up to 4 points along the route (start, ~1/3, ~2/3, end).
-  const samples: [number, number][] = [];
-  const idxs = [0, Math.floor(waypoints.length / 3), Math.floor((2 * waypoints.length) / 3), waypoints.length - 1];
-  const seen = new Set<number>();
-  for (const i of idxs) {
-    if (!seen.has(i) && waypoints[i]) {
-      seen.add(i);
-      samples.push(waypoints[i]);
-    }
-  }
-
-  const queries: { q: string; cat: SuggestedPOI["category"] }[] = [
-    { q: "tourist attraction", cat: "tourist" },
-    { q: "restaurant", cat: "food" },
-    { q: "landmark", cat: "landmark" },
-  ];
-
-  const results: SuggestedPOI[] = [];
-  const dedupe = new Set<string>();
-
-  for (const [lat, lon] of samples) {
-    for (const { q, cat } of queries) {
-      const places = await nearbyPlaces(lat, lon, q, 8, signal, 3);
-      for (const p of places) {
-        const key = `${p.lat.slice(0, 7)}|${p.lon.slice(0, 7)}`;
-        if (dedupe.has(key)) continue;
-        dedupe.add(key);
-        results.push({
-          name: p.display_name.split(",")[0] || p.display_name,
-          lat: parseFloat(p.lat),
-          lon: parseFloat(p.lon),
-          category: cat,
-          near: [lat, lon],
-        });
-      }
-      // small delay to be polite to public Nominatim
-      await new Promise((r) => setTimeout(r, 250));
-    }
-  }
-  return results.slice(0, 12);
-}
+// (Legacy suggestAlongRoute removed — use suggestTouristPlaces.)
