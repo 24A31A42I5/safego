@@ -233,11 +233,17 @@ function GroupDetail() {
 
   // ---- Stop management ----
   const addStop = (pos: [number, number], label: string) => {
+    if (isTourStarted) return toast.error("End the live tour before editing the route");
     setStops((prev) => [...prev, { pos, label }]);
+    setPanToStop(pos);
   };
-  const removeStop = (idx: number) => setStops((prev) => prev.filter((_, i) => i !== idx));
+  const removeStop = (idx: number) => {
+    if (isTourStarted) return toast.error("Route editing is locked in Live Mode");
+    setStops((prev) => prev.filter((_, i) => i !== idx));
+  };
   const moveStop = (idx: number, dir: -1 | 1) =>
     setStops((prev) => {
+      if (isTourStarted) return prev;
       const next = [...prev];
       const j = idx + dir;
       if (j < 0 || j >= next.length) return prev;
@@ -250,8 +256,42 @@ function GroupDetail() {
   };
 
   const onMapClick = (latlng: [number, number]) => {
-    if (!clickToAdd) return;
+    if (!clickToAdd || isTourStarted) return;
     addStop(latlng, `Stop @ ${latlng[0].toFixed(3)}, ${latlng[1].toFixed(3)}`);
+  };
+
+  const addSuggestionToRoute = (place: SuggestedPOI) => {
+    if (isTourStarted) return toast.error("End the live tour before editing the route");
+    const stop = { pos: [place.lat, place.lon] as [number, number], label: place.name };
+    setStops((prev) => (prev.length >= 2 ? [...prev.slice(0, -1), stop, prev[prev.length - 1]] : [...prev, stop]));
+    setPanToStop(stop.pos);
+    toast.success(`${place.name} added to route`);
+  };
+
+  const autoOrderStops = () => {
+    if (isTourStarted) return toast.error("Route editing is locked in Live Mode");
+    if (stops.length < 4) return toast.info("Add at least two stops between start and destination");
+    const start = stops[0];
+    const destination = stops[stops.length - 1];
+    const remaining = stops.slice(1, -1);
+    const ordered: Stop[] = [];
+    let current = start;
+    while (remaining.length) {
+      let bestIdx = 0;
+      let bestScore = Number.POSITIVE_INFINITY;
+      remaining.forEach((candidate, idx) => {
+        const score = haversine(current.pos, candidate.pos) + haversine(candidate.pos, destination.pos) * 0.35;
+        if (score < bestScore) {
+          bestScore = score;
+          bestIdx = idx;
+        }
+      });
+      const [next] = remaining.splice(bestIdx, 1);
+      ordered.push(next);
+      current = next;
+    }
+    setStops([start, ...ordered, destination]);
+    toast.success("Stops auto-ordered for a smoother visit flow");
   };
 
   const saveRoute = async () => {
@@ -265,6 +305,7 @@ function GroupDetail() {
   };
 
   const clearRoute = () => {
+    if (isTourStarted) return toast.error("End the live tour before clearing the route");
     setStops([]);
     setRoute(null);
     setSuggestions([]);
