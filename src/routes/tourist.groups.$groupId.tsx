@@ -328,7 +328,15 @@ function GroupDetail() {
       if (error) throw error;
       const destination = waypoints[waypoints.length - 1];
       const rejected = ["restaurant", "cafe", "coffee", "hotel", "resort", "bar", "shop", "mall", "market", "bakery"];
-      const places: SuggestedPOI[] = (data?.places ?? [])
+      const rawPlaces = (data?.places ?? []) as Array<{
+        name: string;
+        lat: number;
+        lon: number;
+        category: string;
+        reason?: string;
+        distance_km?: number;
+      }>;
+      const places: SuggestedPOI[] = rawPlaces
         .map((p: {
           name: string;
           lat: number;
