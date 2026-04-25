@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,7 +20,9 @@ import {
   X,
   ArrowUp,
   ArrowDown,
-  Crosshair,
+  Lock,
+  Navigation,
+  RouteIcon,
 } from "lucide-react";
 import { fetchRoute, formatDistance, formatDuration, type RouteResult } from "@/lib/routing";
 import type { SuggestedPOI } from "@/lib/nominatim";
@@ -60,7 +62,6 @@ const COLORS = ["#3b82f6", "#ec4899", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444"
 function GroupDetail() {
   const { groupId } = Route.useParams();
   const { user, profile } = useAuth();
-  const { location } = useGeolocation();
   const [group, setGroup] = useState<GroupRow | null>(null);
   const [members, setMembers] = useState<MemberProfile[]>([]);
   const [locations, setLocations] = useState<MemberLoc[]>([]);
@@ -70,11 +71,13 @@ function GroupDetail() {
   const [aiBusy, setAiBusy] = useState(false);
   const [clickToAdd, setClickToAdd] = useState(false);
   const [isTourStarted, setIsTourStarted] = useState(false);
+  const { location } = useGeolocation(isTourStarted);
+  const [panToStop, setPanToStop] = useState<[number, number] | null>(null);
   const lastAlertedRef = useRef<Map<string, "warning" | "critical">>(new Map());
 
   const waypoints = useMemo(() => stops.map((s) => s.pos), [stops]);
 
-  // Load group + members + initial locations
+  // Load group + members once. Planning mode must not subscribe to live location changes.
   useEffect(() => {
     const load = async () => {
       const { data: g } = await supabase
@@ -110,17 +113,22 @@ function GroupDetail() {
           .in("id", userIds);
         setMembers(ps ?? []);
       }
+    };
+    load();
+  }, [groupId]);
 
+  // Realtime subscription only when tour is live — keeps planning mode static.
+  useEffect(() => {
+    if (!isTourStarted) return;
+    const loadLiveLocations = async () => {
       const { data: locs } = await supabase
         .from("member_locations")
         .select("user_id, lat, lng, updated_at")
         .eq("group_id", groupId);
       setLocations(locs ?? []);
     };
-    load();
+    loadLiveLocations();
 
-    // Realtime subscription only when tour is live — keeps planning mode static
-    if (!isTourStarted) return;
     const ch = supabase
       .channel(`group-${groupId}`)
       .on(
@@ -138,7 +146,7 @@ function GroupDetail() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "tour_group_members", filter: `group_id=eq.${groupId}` },
-        () => load()
+        () => loadLiveLocations()
       )
       .subscribe();
     return () => {
@@ -224,25 +232,60 @@ function GroupDetail() {
 
   // ---- Stop management ----
   const addStop = (pos: [number, number], label: string) => {
+    if (isTourStarted) return toast.error("End the live tour before editing the route");
     setStops((prev) => [...prev, { pos, label }]);
+    setPanToStop(pos);
   };
-  const removeStop = (idx: number) => setStops((prev) => prev.filter((_, i) => i !== idx));
+  const removeStop = (idx: number) => {
+    if (isTourStarted) return toast.error("Route editing is locked in Live Mode");
+    setStops((prev) => prev.filter((_, i) => i !== idx));
+  };
   const moveStop = (idx: number, dir: -1 | 1) =>
     setStops((prev) => {
+      if (isTourStarted) return prev;
       const next = [...prev];
       const j = idx + dir;
       if (j < 0 || j >= next.length) return prev;
       [next[idx], next[j]] = [next[j], next[idx]];
       return next;
     });
-  const addMyLocation = () => {
-    if (!location) return toast.error("Location not available");
-    addStop(location, "My location");
+  const onMapClick = useCallback((latlng: [number, number]) => {
+    if (!clickToAdd || isTourStarted) return;
+    addStop(latlng, `Stop @ ${latlng[0].toFixed(3)}, ${latlng[1].toFixed(3)}`);
+  }, [clickToAdd, isTourStarted]);
+
+  const addSuggestionToRoute = (place: SuggestedPOI) => {
+    if (isTourStarted) return toast.error("End the live tour before editing the route");
+    const stop = { pos: [place.lat, place.lon] as [number, number], label: place.name };
+    setStops((prev) => (prev.length >= 2 ? [...prev.slice(0, -1), stop, prev[prev.length - 1]] : [...prev, stop]));
+    setPanToStop(stop.pos);
+    toast.success(`${place.name} added to route`);
   };
 
-  const onMapClick = (latlng: [number, number]) => {
-    if (!clickToAdd) return;
-    addStop(latlng, `Stop @ ${latlng[0].toFixed(3)}, ${latlng[1].toFixed(3)}`);
+  const autoOrderStops = () => {
+    if (isTourStarted) return toast.error("Route editing is locked in Live Mode");
+    if (stops.length < 4) return toast.info("Add at least two stops between start and destination");
+    const start = stops[0];
+    const destination = stops[stops.length - 1];
+    const remaining = stops.slice(1, -1);
+    const ordered: Stop[] = [];
+    let current = start;
+    while (remaining.length) {
+      let bestIdx = 0;
+      let bestScore = Number.POSITIVE_INFINITY;
+      remaining.forEach((candidate, idx) => {
+        const score = haversine(current.pos, candidate.pos) + haversine(candidate.pos, destination.pos) * 0.35;
+        if (score < bestScore) {
+          bestScore = score;
+          bestIdx = idx;
+        }
+      });
+      const [next] = remaining.splice(bestIdx, 1);
+      ordered.push(next);
+      current = next;
+    }
+    setStops([start, ...ordered, destination]);
+    toast.success("Stops auto-ordered for a smoother visit flow");
   };
 
   const saveRoute = async () => {
@@ -256,6 +299,7 @@ function GroupDetail() {
   };
 
   const clearRoute = () => {
+    if (isTourStarted) return toast.error("End the live tour before clearing the route");
     setStops([]);
     setRoute(null);
     setSuggestions([]);
@@ -277,26 +321,45 @@ function GroupDetail() {
       });
       if (error) throw error;
       const destination = waypoints[waypoints.length - 1];
-      const places: SuggestedPOI[] = (data?.places ?? []).map(
-        (p: {
+      const rejected = ["restaurant", "cafe", "coffee", "hotel", "resort", "bar", "shop", "mall", "market", "bakery"];
+      const rawPlaces = (data?.places ?? []) as Array<{
+        name: string;
+        lat: number;
+        lon: number;
+        category: string;
+        reason?: string;
+        distance_km?: number;
+      }>;
+      const places: SuggestedPOI[] = rawPlaces
+        .map((p: {
           name: string;
           lat: number;
           lon: number;
           category: string;
           reason?: string;
           distance_km?: number;
-        }) => ({
-          name: p.name,
-          lat: p.lat,
-          lon: p.lon,
-          category: (["landmark", "nature", "heritage"].includes(p.category)
-            ? p.category
-            : "tourist") as SuggestedPOI["category"],
-          reason: p.reason,
-          near: destination,
-          distanceKm: p.distance_km,
+        }) => {
+          const computedDistance = haversine(destination, [p.lat, p.lon]) / 1000;
+          return {
+            name: p.name,
+            lat: p.lat,
+            lon: p.lon,
+            category: (["landmark", "nature", "heritage"].includes(p.category)
+              ? p.category
+              : "tourist") as SuggestedPOI["category"],
+            reason: p.reason,
+            near: destination,
+            distanceKm: Number.isFinite(p.distance_km) ? p.distance_km : computedDistance,
+          };
         })
-      );
+        .filter((p) =>
+          Number.isFinite(p.lat) &&
+          Number.isFinite(p.lon) &&
+          !rejected.some((word) => `${p.name} ${p.reason ?? ""}`.toLowerCase().includes(word)) &&
+          (p.distanceKm ?? 999) <= 35
+        )
+        .sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
+        .slice(0, 10);
       setSuggestions(places);
       if (places.length === 0) toast.info("No tourist places found near your route");
       else toast.success(`Gemini found ${places.length} tourist places near your route`);
@@ -308,7 +371,7 @@ function GroupDetail() {
   };
 
   // Markers
-  const memberMarkers: MapMarker[] = locations.map((loc, idx) => {
+  const memberMarkers: MapMarker[] = useMemo(() => locations.map((loc, idx) => {
     const m = members.find((mm) => mm.id === loc.user_id);
     const name = m?.full_name ?? "Member";
     const initials = name
@@ -325,30 +388,57 @@ function GroupDetail() {
       color: COLORS[idx % COLORS.length],
       initials,
     };
-  });
+  }), [locations, members, user?.id]);
 
-  const stopMarkers: MapMarker[] = stops.map((s, i) => ({
+  const stopMarkers: MapMarker[] = useMemo(() => stops.map((s, i) => ({
     id: `wp-${i}`,
     pos: s.pos,
     label: `${i === 0 ? "Start" : i === stops.length - 1 ? "Destination" : `Stop ${i}`}: ${s.label}`,
     color: i === 0 ? "#16a34a" : i === stops.length - 1 ? "#dc2626" : "#0ea5e9",
     initials: i === 0 ? "A" : i === stops.length - 1 ? "B" : `${i}`,
-  }));
+  })), [stops]);
 
-  const suggestionMarkers: MapMarker[] = suggestions.map((s, i) => ({
+  const suggestionMarkers: MapMarker[] = useMemo(() => suggestions.map((s, i) => ({
     id: `sug-${i}`,
     pos: [s.lat, s.lon],
     label: `${s.name} (${s.category})`,
     color: "#a855f7",
     initials: "★",
-  }));
+  })), [suggestions]);
+
+  const mapMarkers = useMemo(
+    () => [...(isTourStarted ? memberMarkers : []), ...stopMarkers, ...suggestionMarkers],
+    [isTourStarted, memberMarkers, stopMarkers, suggestionMarkers]
+  );
 
   // In planning mode, only fit to the planned route (static map).
   // In live mode, fit to route + member positions so everyone stays visible.
-  const allPoints: [number, number][] = isTourStarted
-    ? [...locations.map((l) => [l.lat, l.lng] as [number, number]), ...waypoints]
-    : [...waypoints];
-  const bounds = pointsBounds(allPoints);
+  const bounds = useMemo(() => {
+    const allPoints: [number, number][] = isTourStarted
+      ? [...locations.map((l) => [l.lat, l.lng] as [number, number]), ...waypoints]
+      : [...waypoints];
+    return pointsBounds(allPoints);
+  }, [isTourStarted, locations, waypoints]);
+
+  const startTour = () => {
+    if (waypoints.length < 2) {
+      toast.error("Plan a route (start + destination) before starting the tour");
+      return;
+    }
+    const confirmed = window.confirm(
+      "Start Tour will enter Live Mode, lock route planning controls, and begin live location tracking. Continue?"
+    );
+    if (!confirmed) return;
+    setClickToAdd(false);
+    setIsTourStarted(true);
+    toast.success("Live Mode started — route planning is locked");
+  };
+
+  const endTour = () => {
+    setLocations([]);
+    setIsTourStarted(false);
+    toast.success("Tour ended — planning controls unlocked");
+  };
 
   return (
     <div className="space-y-4">
@@ -388,10 +478,11 @@ function GroupDetail() {
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex flex-wrap items-center gap-2">
                 Group Map
-                <Badge variant={isTourStarted ? "default" : "secondary"}>
-                  {isTourStarted ? "Live mode" : "Planning mode"}
+                <Badge variant={isTourStarted ? "default" : "secondary"} className="gap-1">
+                  {isTourStarted ? <Navigation className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+                  {isTourStarted ? "LIVE MODE" : "PLANNING MODE"}
                 </Badge>
               </CardTitle>
               <CardDescription>
@@ -402,36 +493,21 @@ function GroupDetail() {
                     : "Map is static while you plan. Press Start Tour to begin live tracking."}
               </CardDescription>
             </div>
-            <Button
-              size="sm"
-              variant={isTourStarted ? "outline" : "default"}
-              onClick={() => {
-                if (!isTourStarted && waypoints.length < 2) {
-                  toast.error("Plan a route (start + destination) before starting the tour");
-                  return;
-                }
-                setIsTourStarted((v) => !v);
-                toast.success(
-                  isTourStarted ? "Tour ended — back to planning" : "Tour started — live tracking on"
-                );
-              }}
-            >
-              {isTourStarted ? "End tour" : "Start tour"}
+            <Button size="sm" variant={isTourStarted ? "outline" : "default"} onClick={isTourStarted ? endTour : startTour}>
+              {isTourStarted ? "End Live Mode" : "Start Tour"}
             </Button>
           </div>
         </CardHeader>
         <CardContent>
           <SafetyMap
             userLocation={isTourStarted ? location : undefined}
-            markers={[
-              ...(isTourStarted ? memberMarkers : []),
-              ...stopMarkers,
-              ...suggestionMarkers,
-            ]}
+            markers={mapMarkers}
             routePolyline={route?.coordinates ?? (waypoints.length >= 2 ? waypoints : null)}
             fitBounds={bounds}
+            fitBoundsEnabled={isTourStarted || Boolean(panToStop) || waypoints.length > 1}
+            panTo={panToStop}
             onMapClick={onMapClick}
-            cursor={clickToAdd ? "crosshair" : undefined}
+            cursor={clickToAdd && !isTourStarted ? "crosshair" : undefined}
             height="420px"
           />
           {route && (
@@ -458,26 +534,34 @@ function GroupDetail() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <PlaceSearch
-            placeholder={stops.length === 0 ? "Start location" : stops.length === 1 ? "Destination" : "Add a stop"}
-            onSelect={(p) => addStop([p.lat, p.lon], p.label.split(",").slice(0, 2).join(", "))}
-          />
+          {isTourStarted && (
+            <div className="flex items-center gap-2 rounded-md border bg-primary/10 p-3 text-sm text-primary">
+              <Lock className="h-4 w-4" /> Live Mode is active. End Live Mode to edit this route.
+            </div>
+          )}
+          <div className={isTourStarted ? "pointer-events-none opacity-60" : undefined}>
+            <PlaceSearch
+              placeholder={stops.length === 0 ? "Start location" : stops.length === 1 ? "Destination" : "Add a stop"}
+              onSelect={(p) => addStop([p.lat, p.lon], p.label.split(",").slice(0, 2).join(", "))}
+            />
+          </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={addMyLocation} disabled={!location}>
-              <Crosshair className="mr-1 h-4 w-4" /> Use my location
-            </Button>
             <Button
               size="sm"
               variant={clickToAdd ? "default" : "outline"}
               onClick={() => setClickToAdd((v) => !v)}
+              disabled={isTourStarted}
             >
               <Plus className="mr-1 h-4 w-4" /> {clickToAdd ? "Click map to add (on)" : "Click map to add"}
             </Button>
-            <Button size="sm" variant="outline" onClick={saveRoute} disabled={stops.length === 0}>
+            <Button size="sm" variant="outline" onClick={autoOrderStops} disabled={isTourStarted || stops.length < 4}>
+              <RouteIcon className="mr-1 h-4 w-4" /> Auto-order stops
+            </Button>
+            <Button size="sm" variant="outline" onClick={saveRoute} disabled={isTourStarted || stops.length === 0}>
               Save route
             </Button>
-            <Button size="sm" variant="outline" onClick={clearRoute} disabled={stops.length === 0}>
+            <Button size="sm" variant="outline" onClick={clearRoute} disabled={isTourStarted || stops.length === 0}>
               Clear
             </Button>
             <Button size="sm" onClick={askAI} disabled={aiBusy || waypoints.length < 2}>
@@ -504,7 +588,7 @@ function GroupDetail() {
                     variant="ghost"
                     className="h-7 w-7"
                     onClick={() => moveStop(i, -1)}
-                    disabled={i === 0}
+                    disabled={isTourStarted || i === 0}
                     aria-label="Move up"
                   >
                     <ArrowUp className="h-3.5 w-3.5" />
@@ -514,7 +598,7 @@ function GroupDetail() {
                     variant="ghost"
                     className="h-7 w-7"
                     onClick={() => moveStop(i, 1)}
-                    disabled={i === stops.length - 1}
+                    disabled={isTourStarted || i === stops.length - 1}
                     aria-label="Move down"
                   >
                     <ArrowDown className="h-3.5 w-3.5" />
@@ -524,6 +608,7 @@ function GroupDetail() {
                     variant="ghost"
                     className="h-7 w-7 text-destructive"
                     onClick={() => removeStop(i)}
+                    disabled={isTourStarted}
                     aria-label="Remove stop"
                   >
                     <X className="h-3.5 w-3.5" />
@@ -569,11 +654,7 @@ function GroupDetail() {
                       )}
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="default"
-                    onClick={() => addStop([s.lat, s.lon], s.name)}
-                  >
+                  <Button size="sm" variant="default" onClick={() => addSuggestionToRoute(s)} disabled={isTourStarted}>
                     <Plus className="mr-1 h-3.5 w-3.5" /> Add
                   </Button>
                 </div>
@@ -589,7 +670,7 @@ function GroupDetail() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-amber-500" /> Separation alerts
+            <AlertTriangle className="h-4 w-4 text-caution" /> Separation alerts
           </CardTitle>
           <CardDescription>
             Members get notified if anyone drifts &gt;5 km (warning) or &gt;10 km (critical).

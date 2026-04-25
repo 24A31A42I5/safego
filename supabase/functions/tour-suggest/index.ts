@@ -32,14 +32,17 @@ Deno.serve(async (req) => {
       })
       .join("\n");
 
-    const systemPrompt = `You are an expert local travel guide with deep geographic knowledge. Given a planned tour route (start, optional stops, destination) as GPS coordinates, suggest 6-10 REAL tourist places worth visiting near the route — strongly preferring places near the DESTINATION and along the route corridor.
+    const systemPrompt = `You are an expert local travel guide with deep geographic knowledge. Given a planned tour route (start, optional stops, destination) as GPS coordinates, suggest 6-10 REAL, verifiable tourist places worth visiting near the route — strongly preferring places near the DESTINATION and then along the route corridor.
 
 STRICT RULES:
 - Suggest ONLY tourist-relevant places: temples, forts, palaces, museums, monuments, heritage sites, beaches, hills, viewpoints, lakes, waterfalls, parks, gardens, national parks, scenic spots, archaeological sites.
-- DO NOT suggest restaurants, cafes, hotels, shops, malls, bars, pharmacies, or generic businesses.
+- DO NOT suggest restaurants, cafes, hotels, resorts, homestays, shops, malls, markets, bars, bakeries, pharmacies, offices, parking, transport stands, or generic businesses.
 - Use REAL, well-known places that actually exist near those coordinates. Use accurate names.
-- Prioritize places within 20 km of the DESTINATION first, then within 30 km of the route.
+- Prioritize places within 20 km of the DESTINATION first, then within 30 km of the route corridor.
 - Provide accurate latitude/longitude (you must know the real coordinates of the place).
+- Calculate distance_km from the DESTINATION coordinate, not from the start.
+- The reason must be a short “why visit” reason focused on sightseeing value.
+- If you are not confident a place is real and nearby, omit it.
 
 For each suggestion include: name, category, reason (1 short sentence), lat, lon, distance_km from destination.`;
 
@@ -55,7 +58,7 @@ For each suggestion include: name, category, reason (1 short sentence), lat, lon
           { role: "system", content: systemPrompt },
           {
             role: "user",
-            content: `Planned route:\n${wpStr}\n\nDESTINATION: ${destination[0]}, ${destination[1]}\nSTART: ${start[0]}, ${start[1]}\n\nSuggest 6-10 real tourist places near the destination and along the route.`,
+            content: `Planned route:\n${wpStr}\n\nDESTINATION: ${destination[0]}, ${destination[1]}\nSTART: ${start[0]}, ${start[1]}\n\nSearch your geographic knowledge for real tourist attractions near the destination and route points. Return only sightseeing places worth visiting, never food/cafes/hotels/shops.`,
           },
         ],
         tools: [

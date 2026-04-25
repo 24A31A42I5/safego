@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { MapContainer, TileLayer, Marker, Polygon, Polyline, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import type { Database } from "@/integrations/supabase/types";
@@ -40,6 +40,7 @@ interface SafetyMapProps {
   cursor?: string;
   routePolyline?: [number, number][] | null;
   fitBounds?: [[number, number], [number, number]] | null;
+  fitBoundsEnabled?: boolean;
   children?: React.ReactNode;
 }
 
@@ -53,14 +54,16 @@ function PanController({ panTo }: { panTo?: [number, number] | null }) {
 
 function FitBoundsController({
   bounds,
+  enabled = true,
 }: {
   bounds?: [[number, number], [number, number]] | null;
+  enabled?: boolean;
 }) {
   const map = useMap();
   useEffect(() => {
-    if (!bounds) return;
+    if (!enabled || !bounds) return;
     map.flyToBounds(bounds, { padding: [40, 40], duration: 1.0, maxZoom: 16 });
-  }, [bounds, map]);
+  }, [bounds, enabled, map]);
   return null;
 }
 
@@ -107,7 +110,7 @@ function avatarIcon(opts: { avatarUrl?: string | null; initials?: string; color?
   });
 }
 
-export function SafetyMap({
+export const SafetyMap = memo(function SafetyMap({
   center = [13.0827, 80.2707], // Chennai default
   zoom = 13,
   zones = [],
@@ -119,6 +122,7 @@ export function SafetyMap({
   cursor,
   routePolyline,
   fitBounds,
+  fitBoundsEnabled = true,
   children,
 }: SafetyMapProps) {
   const [mounted, setMounted] = useState(false);
@@ -148,7 +152,7 @@ export function SafetyMap({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <PanController panTo={panTo} />
-        <FitBoundsController bounds={fitBounds} />
+        <FitBoundsController bounds={fitBounds} enabled={fitBoundsEnabled} />
         <AutoCenter location={userLocation} />
         <ClickHandler onMapClick={onMapClick} />
         {zones.map((z) => {
@@ -195,4 +199,4 @@ export function SafetyMap({
       </MapContainer>
     </div>
   );
-}
+});
