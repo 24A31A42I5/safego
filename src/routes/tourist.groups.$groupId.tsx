@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { supabase } from "@/integrations/supabase/client";
@@ -249,10 +249,10 @@ function GroupDetail() {
       [next[idx], next[j]] = [next[j], next[idx]];
       return next;
     });
-  const onMapClick = (latlng: [number, number]) => {
+  const onMapClick = useCallback((latlng: [number, number]) => {
     if (!clickToAdd || isTourStarted) return;
     addStop(latlng, `Stop @ ${latlng[0].toFixed(3)}, ${latlng[1].toFixed(3)}`);
-  };
+  }, [clickToAdd, isTourStarted]);
 
   const addSuggestionToRoute = (place: SuggestedPOI) => {
     if (isTourStarted) return toast.error("End the live tour before editing the route");
@@ -371,7 +371,7 @@ function GroupDetail() {
   };
 
   // Markers
-  const memberMarkers: MapMarker[] = locations.map((loc, idx) => {
+  const memberMarkers: MapMarker[] = useMemo(() => locations.map((loc, idx) => {
     const m = members.find((mm) => mm.id === loc.user_id);
     const name = m?.full_name ?? "Member";
     const initials = name
@@ -388,23 +388,28 @@ function GroupDetail() {
       color: COLORS[idx % COLORS.length],
       initials,
     };
-  });
+  }), [locations, members, user?.id]);
 
-  const stopMarkers: MapMarker[] = stops.map((s, i) => ({
+  const stopMarkers: MapMarker[] = useMemo(() => stops.map((s, i) => ({
     id: `wp-${i}`,
     pos: s.pos,
     label: `${i === 0 ? "Start" : i === stops.length - 1 ? "Destination" : `Stop ${i}`}: ${s.label}`,
     color: i === 0 ? "#16a34a" : i === stops.length - 1 ? "#dc2626" : "#0ea5e9",
     initials: i === 0 ? "A" : i === stops.length - 1 ? "B" : `${i}`,
-  }));
+  })), [stops]);
 
-  const suggestionMarkers: MapMarker[] = suggestions.map((s, i) => ({
+  const suggestionMarkers: MapMarker[] = useMemo(() => suggestions.map((s, i) => ({
     id: `sug-${i}`,
     pos: [s.lat, s.lon],
     label: `${s.name} (${s.category})`,
     color: "#a855f7",
     initials: "★",
-  }));
+  })), [suggestions]);
+
+  const mapMarkers = useMemo(
+    () => [...(isTourStarted ? memberMarkers : []), ...stopMarkers, ...suggestionMarkers],
+    [isTourStarted, memberMarkers, stopMarkers, suggestionMarkers]
+  );
 
   // In planning mode, only fit to the planned route (static map).
   // In live mode, fit to route + member positions so everyone stays visible.
