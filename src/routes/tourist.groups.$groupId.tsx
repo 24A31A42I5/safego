@@ -414,10 +414,32 @@ function GroupDetail() {
 
   // In planning mode, only fit to the planned route (static map).
   // In live mode, fit to route + member positions so everyone stays visible.
-  const allPoints: [number, number][] = isTourStarted
-    ? [...locations.map((l) => [l.lat, l.lng] as [number, number]), ...waypoints]
-    : [...waypoints];
-  const bounds = pointsBounds(allPoints);
+  const bounds = useMemo(() => {
+    const allPoints: [number, number][] = isTourStarted
+      ? [...locations.map((l) => [l.lat, l.lng] as [number, number]), ...waypoints]
+      : [...waypoints];
+    return pointsBounds(allPoints);
+  }, [isTourStarted, locations, waypoints]);
+
+  const startTour = () => {
+    if (waypoints.length < 2) {
+      toast.error("Plan a route (start + destination) before starting the tour");
+      return;
+    }
+    const confirmed = window.confirm(
+      "Start Tour will enter Live Mode, lock route planning controls, and begin live location tracking. Continue?"
+    );
+    if (!confirmed) return;
+    setClickToAdd(false);
+    setIsTourStarted(true);
+    toast.success("Live Mode started — route planning is locked");
+  };
+
+  const endTour = () => {
+    setLocations([]);
+    setIsTourStarted(false);
+    toast.success("Tour ended — planning controls unlocked");
+  };
 
   return (
     <div className="space-y-4">
