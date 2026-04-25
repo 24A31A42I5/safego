@@ -659,11 +659,7 @@ function GroupDetail() {
                       )}
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="default"
-                    onClick={() => addStop([s.lat, s.lon], s.name)}
-                  >
+                  <Button size="sm" variant="default" onClick={() => addSuggestionToRoute(s)} disabled={isTourStarted}>
                     <Plus className="mr-1 h-3.5 w-3.5" /> Add
                   </Button>
                 </div>
@@ -679,7 +675,7 @@ function GroupDetail() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-amber-500" /> Separation alerts
+            <AlertTriangle className="h-4 w-4 text-caution" /> Separation alerts
           </CardTitle>
           <CardDescription>
             Members get notified if anyone drifts &gt;5 km (warning) or &gt;10 km (critical).
