@@ -21,6 +21,9 @@ import {
   ArrowUp,
   ArrowDown,
   Crosshair,
+  Lock,
+  Navigation,
+  RouteIcon,
 } from "lucide-react";
 import { fetchRoute, formatDistance, formatDuration, type RouteResult } from "@/lib/routing";
 import type { SuggestedPOI } from "@/lib/nominatim";
@@ -60,7 +63,7 @@ const COLORS = ["#3b82f6", "#ec4899", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444"
 function GroupDetail() {
   const { groupId } = Route.useParams();
   const { user, profile } = useAuth();
-  const { location } = useGeolocation();
+  const { location } = useGeolocation(isTourStarted);
   const [group, setGroup] = useState<GroupRow | null>(null);
   const [members, setMembers] = useState<MemberProfile[]>([]);
   const [locations, setLocations] = useState<MemberLoc[]>([]);
@@ -70,11 +73,12 @@ function GroupDetail() {
   const [aiBusy, setAiBusy] = useState(false);
   const [clickToAdd, setClickToAdd] = useState(false);
   const [isTourStarted, setIsTourStarted] = useState(false);
+  const [panToStop, setPanToStop] = useState<[number, number] | null>(null);
   const lastAlertedRef = useRef<Map<string, "warning" | "critical">>(new Map());
 
   const waypoints = useMemo(() => stops.map((s) => s.pos), [stops]);
 
-  // Load group + members + initial locations
+  // Load group + members once. Planning mode must not subscribe to live location changes.
   useEffect(() => {
     const load = async () => {
       const { data: g } = await supabase
@@ -110,17 +114,22 @@ function GroupDetail() {
           .in("id", userIds);
         setMembers(ps ?? []);
       }
+    };
+    load();
+  }, [groupId]);
 
+  // Realtime subscription only when tour is live — keeps planning mode static.
+  useEffect(() => {
+    if (!isTourStarted) return;
+    const loadLiveLocations = async () => {
       const { data: locs } = await supabase
         .from("member_locations")
         .select("user_id, lat, lng, updated_at")
         .eq("group_id", groupId);
       setLocations(locs ?? []);
     };
-    load();
+    loadLiveLocations();
 
-    // Realtime subscription only when tour is live — keeps planning mode static
-    if (!isTourStarted) return;
     const ch = supabase
       .channel(`group-${groupId}`)
       .on(
@@ -138,7 +147,7 @@ function GroupDetail() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "tour_group_members", filter: `group_id=eq.${groupId}` },
-        () => load()
+        () => loadLiveLocations()
       )
       .subscribe();
     return () => {
