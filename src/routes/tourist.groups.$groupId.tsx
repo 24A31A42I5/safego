@@ -63,7 +63,6 @@ const COLORS = ["#3b82f6", "#ec4899", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444"
 function GroupDetail() {
   const { groupId } = Route.useParams();
   const { user, profile } = useAuth();
-  const { location } = useGeolocation(isTourStarted);
   const [group, setGroup] = useState<GroupRow | null>(null);
   const [members, setMembers] = useState<MemberProfile[]>([]);
   const [locations, setLocations] = useState<MemberLoc[]>([]);
@@ -73,6 +72,7 @@ function GroupDetail() {
   const [aiBusy, setAiBusy] = useState(false);
   const [clickToAdd, setClickToAdd] = useState(false);
   const [isTourStarted, setIsTourStarted] = useState(false);
+  const { location } = useGeolocation(isTourStarted);
   const [panToStop, setPanToStop] = useState<[number, number] | null>(null);
   const lastAlertedRef = useRef<Map<string, "warning" | "critical">>(new Map());
 
