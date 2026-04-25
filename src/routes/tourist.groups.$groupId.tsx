@@ -501,11 +501,7 @@ function GroupDetail() {
         <CardContent>
           <SafetyMap
             userLocation={isTourStarted ? location : undefined}
-            markers={[
-              ...(isTourStarted ? memberMarkers : []),
-              ...stopMarkers,
-              ...suggestionMarkers,
-            ]}
+            markers={mapMarkers}
             routePolyline={route?.coordinates ?? (waypoints.length >= 2 ? waypoints : null)}
             fitBounds={bounds}
             fitBoundsEnabled={isTourStarted || Boolean(panToStop) || waypoints.length > 1}
