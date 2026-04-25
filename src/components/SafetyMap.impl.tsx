@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { MapContainer, TileLayer, Marker, Polygon, Polyline, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import type { Database } from "@/integrations/supabase/types";
@@ -110,7 +110,7 @@ function avatarIcon(opts: { avatarUrl?: string | null; initials?: string; color?
   });
 }
 
-export function SafetyMap({
+export const SafetyMap = memo(function SafetyMap({
   center = [13.0827, 80.2707], // Chennai default
   zoom = 13,
   zones = [],
@@ -199,4 +199,4 @@ export function SafetyMap({
       </MapContainer>
     </div>
   );
-}
+});
