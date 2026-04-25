@@ -479,10 +479,11 @@ function GroupDetail() {
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex flex-wrap items-center gap-2">
                 Group Map
-                <Badge variant={isTourStarted ? "default" : "secondary"}>
-                  {isTourStarted ? "Live mode" : "Planning mode"}
+                <Badge variant={isTourStarted ? "default" : "secondary"} className="gap-1">
+                  {isTourStarted ? <Navigation className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+                  {isTourStarted ? "LIVE MODE" : "PLANNING MODE"}
                 </Badge>
               </CardTitle>
               <CardDescription>
@@ -493,21 +494,8 @@ function GroupDetail() {
                     : "Map is static while you plan. Press Start Tour to begin live tracking."}
               </CardDescription>
             </div>
-            <Button
-              size="sm"
-              variant={isTourStarted ? "outline" : "default"}
-              onClick={() => {
-                if (!isTourStarted && waypoints.length < 2) {
-                  toast.error("Plan a route (start + destination) before starting the tour");
-                  return;
-                }
-                setIsTourStarted((v) => !v);
-                toast.success(
-                  isTourStarted ? "Tour ended — back to planning" : "Tour started — live tracking on"
-                );
-              }}
-            >
-              {isTourStarted ? "End tour" : "Start tour"}
+            <Button size="sm" variant={isTourStarted ? "outline" : "default"} onClick={isTourStarted ? endTour : startTour}>
+              {isTourStarted ? "End Live Mode" : "Start Tour"}
             </Button>
           </div>
         </CardHeader>
@@ -521,8 +509,10 @@ function GroupDetail() {
             ]}
             routePolyline={route?.coordinates ?? (waypoints.length >= 2 ? waypoints : null)}
             fitBounds={bounds}
+            fitBoundsEnabled={isTourStarted || Boolean(panToStop) || waypoints.length > 1}
+            panTo={panToStop}
             onMapClick={onMapClick}
-            cursor={clickToAdd ? "crosshair" : undefined}
+            cursor={clickToAdd && !isTourStarted ? "crosshair" : undefined}
             height="420px"
           />
           {route && (
@@ -549,26 +539,35 @@ function GroupDetail() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
+          {isTourStarted && (
+            <div className="flex items-center gap-2 rounded-md border bg-primary/10 p-3 text-sm text-primary">
+              <Lock className="h-4 w-4" /> Live Mode is active. End Live Mode to edit this route.
+            </div>
+          )}
           <PlaceSearch
             placeholder={stops.length === 0 ? "Start location" : stops.length === 1 ? "Destination" : "Add a stop"}
             onSelect={(p) => addStop([p.lat, p.lon], p.label.split(",").slice(0, 2).join(", "))}
           />
 
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={addMyLocation} disabled={!location}>
+            <Button size="sm" variant="outline" onClick={addMyLocation} disabled={isTourStarted || !location}>
               <Crosshair className="mr-1 h-4 w-4" /> Use my location
             </Button>
             <Button
               size="sm"
               variant={clickToAdd ? "default" : "outline"}
               onClick={() => setClickToAdd((v) => !v)}
+              disabled={isTourStarted}
             >
               <Plus className="mr-1 h-4 w-4" /> {clickToAdd ? "Click map to add (on)" : "Click map to add"}
             </Button>
-            <Button size="sm" variant="outline" onClick={saveRoute} disabled={stops.length === 0}>
+            <Button size="sm" variant="outline" onClick={autoOrderStops} disabled={isTourStarted || stops.length < 4}>
+              <RouteIcon className="mr-1 h-4 w-4" /> Auto-order stops
+            </Button>
+            <Button size="sm" variant="outline" onClick={saveRoute} disabled={isTourStarted || stops.length === 0}>
               Save route
             </Button>
-            <Button size="sm" variant="outline" onClick={clearRoute} disabled={stops.length === 0}>
+            <Button size="sm" variant="outline" onClick={clearRoute} disabled={isTourStarted || stops.length === 0}>
               Clear
             </Button>
             <Button size="sm" onClick={askAI} disabled={aiBusy || waypoints.length < 2}>
