@@ -20,7 +20,6 @@ import {
   X,
   ArrowUp,
   ArrowDown,
-  Crosshair,
   Lock,
   Navigation,
   RouteIcon,
@@ -250,11 +249,6 @@ function GroupDetail() {
       [next[idx], next[j]] = [next[j], next[idx]];
       return next;
     });
-  const addMyLocation = () => {
-    if (!location) return toast.error("Location not available");
-    addStop(location, "My location");
-  };
-
   const onMapClick = (latlng: [number, number]) => {
     if (!clickToAdd || isTourStarted) return;
     addStop(latlng, `Stop @ ${latlng[0].toFixed(3)}, ${latlng[1].toFixed(3)}`);
@@ -544,15 +538,14 @@ function GroupDetail() {
               <Lock className="h-4 w-4" /> Live Mode is active. End Live Mode to edit this route.
             </div>
           )}
-          <PlaceSearch
-            placeholder={stops.length === 0 ? "Start location" : stops.length === 1 ? "Destination" : "Add a stop"}
-            onSelect={(p) => addStop([p.lat, p.lon], p.label.split(",").slice(0, 2).join(", "))}
-          />
+          <div className={isTourStarted ? "pointer-events-none opacity-60" : undefined}>
+            <PlaceSearch
+              placeholder={stops.length === 0 ? "Start location" : stops.length === 1 ? "Destination" : "Add a stop"}
+              onSelect={(p) => addStop([p.lat, p.lon], p.label.split(",").slice(0, 2).join(", "))}
+            />
+          </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={addMyLocation} disabled={isTourStarted || !location}>
-              <Crosshair className="mr-1 h-4 w-4" /> Use my location
-            </Button>
             <Button
               size="sm"
               variant={clickToAdd ? "default" : "outline"}
@@ -594,7 +587,7 @@ function GroupDetail() {
                     variant="ghost"
                     className="h-7 w-7"
                     onClick={() => moveStop(i, -1)}
-                    disabled={i === 0}
+                    disabled={isTourStarted || i === 0}
                     aria-label="Move up"
                   >
                     <ArrowUp className="h-3.5 w-3.5" />
@@ -604,7 +597,7 @@ function GroupDetail() {
                     variant="ghost"
                     className="h-7 w-7"
                     onClick={() => moveStop(i, 1)}
-                    disabled={i === stops.length - 1}
+                    disabled={isTourStarted || i === stops.length - 1}
                     aria-label="Move down"
                   >
                     <ArrowDown className="h-3.5 w-3.5" />
@@ -614,6 +607,7 @@ function GroupDetail() {
                     variant="ghost"
                     className="h-7 w-7 text-destructive"
                     onClick={() => removeStop(i)}
+                    disabled={isTourStarted}
                     aria-label="Remove stop"
                   >
                     <X className="h-3.5 w-3.5" />
