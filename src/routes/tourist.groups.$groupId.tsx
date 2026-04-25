@@ -327,26 +327,37 @@ function GroupDetail() {
       });
       if (error) throw error;
       const destination = waypoints[waypoints.length - 1];
-      const places: SuggestedPOI[] = (data?.places ?? []).map(
-        (p: {
+      const rejected = ["restaurant", "cafe", "coffee", "hotel", "resort", "bar", "shop", "mall", "market", "bakery"];
+      const places: SuggestedPOI[] = (data?.places ?? [])
+        .map((p: {
           name: string;
           lat: number;
           lon: number;
           category: string;
           reason?: string;
           distance_km?: number;
-        }) => ({
-          name: p.name,
-          lat: p.lat,
-          lon: p.lon,
-          category: (["landmark", "nature", "heritage"].includes(p.category)
-            ? p.category
-            : "tourist") as SuggestedPOI["category"],
-          reason: p.reason,
-          near: destination,
-          distanceKm: p.distance_km,
+        }) => {
+          const computedDistance = haversine(destination, [p.lat, p.lon]) / 1000;
+          return {
+            name: p.name,
+            lat: p.lat,
+            lon: p.lon,
+            category: (["landmark", "nature", "heritage"].includes(p.category)
+              ? p.category
+              : "tourist") as SuggestedPOI["category"],
+            reason: p.reason,
+            near: destination,
+            distanceKm: Number.isFinite(p.distance_km) ? p.distance_km : computedDistance,
+          };
         })
-      );
+        .filter((p) =>
+          Number.isFinite(p.lat) &&
+          Number.isFinite(p.lon) &&
+          !rejected.some((word) => `${p.name} ${p.reason ?? ""}`.toLowerCase().includes(word)) &&
+          (p.distanceKm ?? 999) <= 35
+        )
+        .sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
+        .slice(0, 10);
       setSuggestions(places);
       if (places.length === 0) toast.info("No tourist places found near your route");
       else toast.success(`Gemini found ${places.length} tourist places near your route`);
