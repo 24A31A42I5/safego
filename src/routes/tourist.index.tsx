@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { SafetyMap, type Zone } from "@/components/SafetyMap";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,7 +30,6 @@ import {
   AlertTriangle,
   Navigation,
   MapPin,
-  Users,
 } from "lucide-react";
 
 export const Route = createFileRoute("/tourist/")({
@@ -174,20 +173,6 @@ function TouristDashboard() {
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Welcome, {profile?.full_name?.split(" ")[0] ?? "Tourist"}!</CardTitle>
-          <CardDescription className="font-mono text-xs">ID: {profile?.digital_id}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button asChild variant="outline" className="w-full sm:w-auto">
-            <Link to="/tourist/groups">
-              <Users className="mr-2 h-4 w-4" /> Group Tours
-            </Link>
-          </Button>
-        </CardContent>
-      </Card>
-
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
