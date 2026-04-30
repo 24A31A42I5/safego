@@ -30,7 +30,6 @@ import {
   AlertTriangle,
   Navigation,
   MapPin,
-  Users,
 } from "lucide-react";
 
 export const Route = createFileRoute("/tourist/")({
