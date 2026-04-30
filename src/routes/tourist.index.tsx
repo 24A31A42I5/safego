@@ -176,20 +176,6 @@ function TouristDashboard() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Welcome, {profile?.full_name?.split(" ")[0] ?? "Tourist"}!</CardTitle>
-          <CardDescription className="font-mono text-xs">ID: {profile?.digital_id}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button asChild variant="outline" className="w-full sm:w-auto">
-            <Link to="/tourist/groups">
-              <Users className="mr-2 h-4 w-4" /> Group Tours
-            </Link>
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Siren className="h-5 w-5 text-destructive" /> Emergency Center
           </CardTitle>
