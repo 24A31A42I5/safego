@@ -79,7 +79,11 @@ function GroupDetail() {
   const [isTourStarted, setIsTourStarted] = useState(false);
   const { location } = useGeolocation(isTourStarted);
   const [panToStop, setPanToStop] = useState<[number, number] | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const lastAlertedRef = useRef<Map<string, "warning" | "critical">>(new Map());
+  const { applyTour } = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const appliedRef = useRef<string | null>(null);
 
   const waypoints = useMemo(() => stops.map((s) => s.pos), [stops]);
 
