@@ -605,6 +605,14 @@ function GroupDetail() {
             <Button size="sm" variant="outline" onClick={saveRoute} disabled={isTourStarted || stops.length === 0}>
               Save route
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShareOpen(true)}
+              disabled={isTourStarted || stops.length < 2}
+            >
+              <Share2 className="mr-1 h-4 w-4" /> Share plan
+            </Button>
             <Button size="sm" variant="outline" onClick={clearRoute} disabled={isTourStarted || stops.length === 0}>
               Clear
             </Button>
