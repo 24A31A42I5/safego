@@ -27,7 +27,7 @@ import {
 import { fetchRoute, formatDistance, formatDuration, type RouteResult } from "@/lib/routing";
 import type { SuggestedPOI } from "@/lib/nominatim";
 import { haversine, pointsBounds } from "@/lib/geo";
-import { decodePolyline } from "@/lib/polyline";
+
 import { ShareTourDialog, type ShareTourPayload } from "@/components/ShareTourDialog";
 import { Share2 } from "lucide-react";
 
