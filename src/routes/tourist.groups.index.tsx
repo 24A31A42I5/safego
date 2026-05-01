@@ -98,7 +98,7 @@ function GroupsPage() {
               </CardHeader>
               <CardContent>
                 <Button asChild className="w-full">
-                  <Link to="/tourist/groups/$groupId" params={{ groupId: g.id }}>
+                  <Link to="/tourist/groups/$groupId" params={{ groupId: g.id }} search={{ applyTour: undefined }}>
                     Open Group <ArrowRight className="ml-1 h-4 w-4" />
                   </Link>
                 </Button>
