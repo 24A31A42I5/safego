@@ -28,8 +28,14 @@ import { fetchRoute, formatDistance, formatDuration, type RouteResult } from "@/
 import type { SuggestedPOI } from "@/lib/nominatim";
 import { haversine, pointsBounds } from "@/lib/geo";
 
+import { ShareTourDialog, type ShareTourPayload } from "@/components/ShareTourDialog";
+import { Share2 } from "lucide-react";
+
 export const Route = createFileRoute("/tourist/groups/$groupId")({
   component: GroupDetail,
+  validateSearch: (search: Record<string, unknown>) => ({
+    applyTour: typeof search.applyTour === "string" ? search.applyTour : undefined,
+  }),
 });
 
 interface GroupRow {
@@ -73,7 +79,11 @@ function GroupDetail() {
   const [isTourStarted, setIsTourStarted] = useState(false);
   const { location } = useGeolocation(isTourStarted);
   const [panToStop, setPanToStop] = useState<[number, number] | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const lastAlertedRef = useRef<Map<string, "warning" | "critical">>(new Map());
+  const { applyTour } = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const appliedRef = useRef<string | null>(null);
 
   const waypoints = useMemo(() => stops.map((s) => s.pos), [stops]);
 
@@ -116,6 +126,40 @@ function GroupDetail() {
     };
     load();
   }, [groupId]);
+
+  // Apply a shared community tour when navigated with ?applyTour=<id>.
+  useEffect(() => {
+    if (!applyTour || appliedRef.current === applyTour) return;
+    if (isTourStarted) return;
+    appliedRef.current = applyTour;
+    (async () => {
+      const { data, error } = await supabase
+        .from("shared_tours")
+        .select("*")
+        .eq("id", applyTour)
+        .maybeSingle();
+      if (error || !data) {
+        toast.error("Could not load that plan");
+        navigate({ search: { applyTour: undefined }, replace: true });
+        return;
+      }
+      const ok = window.confirm(`Replace current route with "${data.title}"?`);
+      if (!ok) {
+        navigate({ search: { applyTour: undefined }, replace: true });
+        return;
+      }
+      const sortedStops = [...(data.stops as { name: string; lat: number; lng: number; order: number }[])]
+        .sort((a, b) => a.order - b.order);
+      const next: Stop[] = [
+        { pos: [data.start_lat, data.start_lng], label: data.start_label },
+        ...sortedStops.map((s) => ({ pos: [s.lat, s.lng] as [number, number], label: s.name })),
+        { pos: [data.dest_lat, data.dest_lng], label: data.dest_label },
+      ];
+      setStops(next);
+      toast.success("Plan loaded — edit freely");
+      navigate({ search: { applyTour: undefined }, replace: true });
+    })();
+  }, [applyTour, isTourStarted, navigate]);
 
   // Realtime subscription only when tour is live — keeps planning mode static.
   useEffect(() => {
@@ -561,6 +605,14 @@ function GroupDetail() {
             <Button size="sm" variant="outline" onClick={saveRoute} disabled={isTourStarted || stops.length === 0}>
               Save route
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShareOpen(true)}
+              disabled={isTourStarted || stops.length < 2}
+            >
+              <Share2 className="mr-1 h-4 w-4" /> Share plan
+            </Button>
             <Button size="sm" variant="outline" onClick={clearRoute} disabled={isTourStarted || stops.length === 0}>
               Clear
             </Button>
@@ -677,6 +729,23 @@ function GroupDetail() {
           </CardDescription>
         </CardHeader>
       </Card>
+
+      <ShareTourDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        payload={
+          stops.length >= 2
+            ? ({
+                start: stops[0],
+                destination: stops[stops.length - 1],
+                intermediateStops: stops.slice(1, -1),
+                routeCoordinates: route?.coordinates ?? null,
+                routeDistanceM: route?.distance ?? 0,
+                routeDurationS: route?.duration ?? 0,
+              } satisfies ShareTourPayload)
+            : null
+        }
+      />
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { LogOut, Home, Users, Menu } from "lucide-react";
+import { LogOut, Home, Users, Menu, Compass } from "lucide-react";
 
 export const Route = createFileRoute("/tourist")({
   component: TouristLayout,
@@ -13,6 +13,7 @@ export const Route = createFileRoute("/tourist")({
 const navItems: { to: string; label: string; icon: typeof Home; exact?: boolean }[] = [
   { to: "/tourist", label: "Dashboard", icon: Home, exact: true },
   { to: "/tourist/groups", label: "Group Tours", icon: Users },
+  { to: "/tourist/discover", label: "Discover Plans", icon: Compass },
 ];
 
 function TouristLayout() {
