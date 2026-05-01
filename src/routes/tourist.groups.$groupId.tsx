@@ -729,6 +729,23 @@ function GroupDetail() {
           </CardDescription>
         </CardHeader>
       </Card>
+
+      <ShareTourDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        payload={
+          stops.length >= 2
+            ? ({
+                start: stops[0],
+                destination: stops[stops.length - 1],
+                intermediateStops: stops.slice(1, -1),
+                routeCoordinates: route?.coordinates ?? null,
+                routeDistanceM: route?.distance ?? 0,
+                routeDurationS: route?.duration ?? 0,
+              } satisfies ShareTourPayload)
+            : null
+        }
+      />
     </div>
   );
 }
