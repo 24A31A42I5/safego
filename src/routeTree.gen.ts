@@ -17,6 +17,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as TouristIndexRouteImport } from './routes/tourist.index'
 import { Route as DepartmentIndexRouteImport } from './routes/department.index'
 import { Route as TouristGroupsRouteImport } from './routes/tourist.groups'
+import { Route as TouristDiscoverRouteImport } from './routes/tourist.discover'
 import { Route as DepartmentZonesRouteImport } from './routes/department.zones'
 import { Route as DepartmentSosRouteImport } from './routes/department.sos'
 import { Route as DepartmentMapRouteImport } from './routes/department.map'
@@ -63,6 +64,11 @@ const DepartmentIndexRoute = DepartmentIndexRouteImport.update({
 const TouristGroupsRoute = TouristGroupsRouteImport.update({
   id: '/groups',
   path: '/groups',
+  getParentRoute: () => TouristRoute,
+} as any)
+const TouristDiscoverRoute = TouristDiscoverRouteImport.update({
+  id: '/discover',
+  path: '/discover',
   getParentRoute: () => TouristRoute,
 } as any)
 const DepartmentZonesRoute = DepartmentZonesRouteImport.update({
@@ -112,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/department/map': typeof DepartmentMapRoute
   '/department/sos': typeof DepartmentSosRoute
   '/department/zones': typeof DepartmentZonesRoute
+  '/tourist/discover': typeof TouristDiscoverRoute
   '/tourist/groups': typeof TouristGroupsRouteWithChildren
   '/department/': typeof DepartmentIndexRoute
   '/tourist/': typeof TouristIndexRoute
@@ -127,6 +134,7 @@ export interface FileRoutesByTo {
   '/department/map': typeof DepartmentMapRoute
   '/department/sos': typeof DepartmentSosRoute
   '/department/zones': typeof DepartmentZonesRoute
+  '/tourist/discover': typeof TouristDiscoverRoute
   '/department': typeof DepartmentIndexRoute
   '/tourist': typeof TouristIndexRoute
   '/tourist/groups/$groupId': typeof TouristGroupsGroupIdRoute
@@ -144,6 +152,7 @@ export interface FileRoutesById {
   '/department/map': typeof DepartmentMapRoute
   '/department/sos': typeof DepartmentSosRoute
   '/department/zones': typeof DepartmentZonesRoute
+  '/tourist/discover': typeof TouristDiscoverRoute
   '/tourist/groups': typeof TouristGroupsRouteWithChildren
   '/department/': typeof DepartmentIndexRoute
   '/tourist/': typeof TouristIndexRoute
@@ -163,6 +172,7 @@ export interface FileRouteTypes {
     | '/department/map'
     | '/department/sos'
     | '/department/zones'
+    | '/tourist/discover'
     | '/tourist/groups'
     | '/department/'
     | '/tourist/'
@@ -178,6 +188,7 @@ export interface FileRouteTypes {
     | '/department/map'
     | '/department/sos'
     | '/department/zones'
+    | '/tourist/discover'
     | '/department'
     | '/tourist'
     | '/tourist/groups/$groupId'
@@ -194,6 +205,7 @@ export interface FileRouteTypes {
     | '/department/map'
     | '/department/sos'
     | '/department/zones'
+    | '/tourist/discover'
     | '/tourist/groups'
     | '/department/'
     | '/tourist/'
@@ -265,6 +277,13 @@ declare module '@tanstack/react-router' {
       path: '/groups'
       fullPath: '/tourist/groups'
       preLoaderRoute: typeof TouristGroupsRouteImport
+      parentRoute: typeof TouristRoute
+    }
+    '/tourist/discover': {
+      id: '/tourist/discover'
+      path: '/discover'
+      fullPath: '/tourist/discover'
+      preLoaderRoute: typeof TouristDiscoverRouteImport
       parentRoute: typeof TouristRoute
     }
     '/department/zones': {
@@ -356,11 +375,13 @@ const TouristGroupsRouteWithChildren = TouristGroupsRoute._addFileChildren(
 )
 
 interface TouristRouteChildren {
+  TouristDiscoverRoute: typeof TouristDiscoverRoute
   TouristGroupsRoute: typeof TouristGroupsRouteWithChildren
   TouristIndexRoute: typeof TouristIndexRoute
 }
 
 const TouristRouteChildren: TouristRouteChildren = {
+  TouristDiscoverRoute: TouristDiscoverRoute,
   TouristGroupsRoute: TouristGroupsRouteWithChildren,
   TouristIndexRoute: TouristIndexRoute,
 }
