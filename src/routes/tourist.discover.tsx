@@ -195,7 +195,7 @@ function DiscoverPage() {
     navigate({
       to: "/tourist/groups/$groupId",
       params: { groupId },
-      search: { applyTour: pendingTour.id } as never,
+      search: { applyTour: pendingTour.id },
     });
   };
 
