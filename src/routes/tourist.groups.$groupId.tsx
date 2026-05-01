@@ -127,6 +127,40 @@ function GroupDetail() {
     load();
   }, [groupId]);
 
+  // Apply a shared community tour when navigated with ?applyTour=<id>.
+  useEffect(() => {
+    if (!applyTour || appliedRef.current === applyTour) return;
+    if (isTourStarted) return;
+    appliedRef.current = applyTour;
+    (async () => {
+      const { data, error } = await supabase
+        .from("shared_tours")
+        .select("*")
+        .eq("id", applyTour)
+        .maybeSingle();
+      if (error || !data) {
+        toast.error("Could not load that plan");
+        navigate({ search: { applyTour: undefined }, replace: true });
+        return;
+      }
+      const ok = window.confirm(`Replace current route with "${data.title}"?`);
+      if (!ok) {
+        navigate({ search: { applyTour: undefined }, replace: true });
+        return;
+      }
+      const sortedStops = [...(data.stops as { name: string; lat: number; lng: number; order: number }[])]
+        .sort((a, b) => a.order - b.order);
+      const next: Stop[] = [
+        { pos: [data.start_lat, data.start_lng], label: data.start_label },
+        ...sortedStops.map((s) => ({ pos: [s.lat, s.lng] as [number, number], label: s.name })),
+        { pos: [data.dest_lat, data.dest_lng], label: data.dest_label },
+      ];
+      setStops(next);
+      toast.success("Plan loaded — edit freely");
+      navigate({ search: { applyTour: undefined }, replace: true });
+    })();
+  }, [applyTour, isTourStarted, navigate]);
+
   // Realtime subscription only when tour is live — keeps planning mode static.
   useEffect(() => {
     if (!isTourStarted) return;
