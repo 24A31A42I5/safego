@@ -27,9 +27,15 @@ import {
 import { fetchRoute, formatDistance, formatDuration, type RouteResult } from "@/lib/routing";
 import type { SuggestedPOI } from "@/lib/nominatim";
 import { haversine, pointsBounds } from "@/lib/geo";
+import { decodePolyline } from "@/lib/polyline";
+import { ShareTourDialog, type ShareTourPayload } from "@/components/ShareTourDialog";
+import { Share2 } from "lucide-react";
 
 export const Route = createFileRoute("/tourist/groups/$groupId")({
   component: GroupDetail,
+  validateSearch: (search: Record<string, unknown>) => ({
+    applyTour: typeof search.applyTour === "string" ? search.applyTour : undefined,
+  }),
 });
 
 interface GroupRow {
