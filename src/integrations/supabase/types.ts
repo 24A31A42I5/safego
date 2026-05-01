@@ -162,6 +162,104 @@ export type Database = {
           },
         ]
       }
+      shared_tour_ratings: {
+        Row: {
+          created_at: string
+          id: string
+          rating: number
+          tour_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          rating: number
+          tour_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          rating?: number
+          tour_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_tour_ratings_tour_id_fkey"
+            columns: ["tour_id"]
+            isOneToOne: false
+            referencedRelation: "shared_tours"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shared_tours: {
+        Row: {
+          created_at: string
+          creator_id: string
+          creator_name: string
+          description: string | null
+          dest_label: string
+          dest_lat: number
+          dest_lng: number
+          id: string
+          rating_count: number
+          rating_sum: number
+          route_distance_m: number
+          route_duration_s: number
+          route_polyline: string | null
+          start_label: string
+          start_lat: number
+          start_lng: number
+          stops: Json
+          tags: string[]
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          creator_name: string
+          description?: string | null
+          dest_label: string
+          dest_lat: number
+          dest_lng: number
+          id?: string
+          rating_count?: number
+          rating_sum?: number
+          route_distance_m?: number
+          route_duration_s?: number
+          route_polyline?: string | null
+          start_label: string
+          start_lat: number
+          start_lng: number
+          stops?: Json
+          tags?: string[]
+          title: string
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          creator_name?: string
+          description?: string | null
+          dest_label?: string
+          dest_lat?: number
+          dest_lng?: number
+          id?: string
+          rating_count?: number
+          rating_sum?: number
+          route_distance_m?: number
+          route_duration_s?: number
+          route_polyline?: string | null
+          start_label?: string
+          start_lat?: number
+          start_lng?: number
+          stops?: Json
+          tags?: string[]
+          title?: string
+        }
+        Relationships: []
+      }
       sos_alerts: {
         Row: {
           alert_type: Database["public"]["Enums"]["alert_type"]
