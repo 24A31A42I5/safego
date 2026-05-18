@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TouristRouteImport } from './routes/tourist'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DepartmentRouteImport } from './routes/department'
@@ -29,6 +30,11 @@ import { Route as TouristGroupsGroupIdRouteImport } from './routes/tourist.group
 const TouristRoute = TouristRouteImport.update({
   id: '/tourist',
   path: '/tourist',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SignupRoute = SignupRouteImport.update({
@@ -112,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/department': typeof DepartmentRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/tourist': typeof TouristRouteWithChildren
   '/department/incidents': typeof DepartmentIncidentsRoute
   '/department/lost': typeof DepartmentLostRoute
@@ -129,6 +136,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/department/incidents': typeof DepartmentIncidentsRoute
   '/department/lost': typeof DepartmentLostRoute
   '/department/map': typeof DepartmentMapRoute
@@ -146,6 +154,7 @@ export interface FileRoutesById {
   '/department': typeof DepartmentRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/tourist': typeof TouristRouteWithChildren
   '/department/incidents': typeof DepartmentIncidentsRoute
   '/department/lost': typeof DepartmentLostRoute
@@ -166,6 +175,7 @@ export interface FileRouteTypes {
     | '/department'
     | '/login'
     | '/signup'
+    | '/sitemap.xml'
     | '/tourist'
     | '/department/incidents'
     | '/department/lost'
@@ -183,6 +193,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/signup'
+    | '/sitemap.xml'
     | '/department/incidents'
     | '/department/lost'
     | '/department/map'
@@ -199,6 +210,7 @@ export interface FileRouteTypes {
     | '/department'
     | '/login'
     | '/signup'
+    | '/sitemap.xml'
     | '/tourist'
     | '/department/incidents'
     | '/department/lost'
@@ -218,6 +230,7 @@ export interface RootRouteChildren {
   DepartmentRoute: typeof DepartmentRouteWithChildren
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TouristRoute: typeof TouristRouteWithChildren
 }
 
@@ -228,6 +241,13 @@ declare module '@tanstack/react-router' {
       path: '/tourist'
       fullPath: '/tourist'
       preLoaderRoute: typeof TouristRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/signup': {
@@ -394,6 +414,7 @@ const rootRouteChildren: RootRouteChildren = {
   DepartmentRoute: DepartmentRouteWithChildren,
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   TouristRoute: TouristRouteWithChildren,
 }
 export const routeTree = rootRouteImport
