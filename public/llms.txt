@@ -1,0 +1,9 @@
+# SafeGo
+
+> SafeGo is a tourist safety platform offering a blockchain-verified Digital ID, real-time safety zones, SOS alerts, and offline maps.
+
+## Pages
+
+- [Home](/): Overview of SafeGo features and how to get started.
+- [Sign In](/login): Sign in to your SafeGo account.
+- [Sign Up](/signup): Create a SafeGo account and generate your Digital ID.
