@@ -101,7 +101,7 @@ function Landing() {
                 variant="outline"
                 className="border-white/40 bg-white/10 text-white hover:bg-white/20"
               >
-                Learn More
+                Learn more about SafeGo features
               </Button>
             </a>
           </div>
