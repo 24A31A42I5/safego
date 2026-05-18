@@ -162,6 +162,70 @@ export type Database = {
           },
         ]
       }
+      shared_tour_comments: {
+        Row: {
+          created_at: string
+          id: string
+          text: string
+          tour_id: string
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          text: string
+          tour_id: string
+          user_id: string
+          user_name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          text?: string
+          tour_id?: string
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_tour_comments_tour_id_fkey"
+            columns: ["tour_id"]
+            isOneToOne: false
+            referencedRelation: "shared_tours"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shared_tour_likes: {
+        Row: {
+          created_at: string
+          id: string
+          tour_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          tour_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          tour_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_tour_likes_tour_id_fkey"
+            columns: ["tour_id"]
+            isOneToOne: false
+            referencedRelation: "shared_tours"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shared_tour_ratings: {
         Row: {
           created_at: string
@@ -194,9 +258,40 @@ export type Database = {
           },
         ]
       }
-      shared_tours: {
+      shared_tour_saves: {
         Row: {
           created_at: string
+          id: string
+          tour_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          tour_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          tour_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_tour_saves_tour_id_fkey"
+            columns: ["tour_id"]
+            isOneToOne: false
+            referencedRelation: "shared_tours"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shared_tours: {
+        Row: {
+          comments_count: number
+          created_at: string
+          creator_avatar: string | null
           creator_id: string
           creator_name: string
           description: string | null
@@ -204,20 +299,26 @@ export type Database = {
           dest_lat: number
           dest_lng: number
           id: string
+          images: string[]
+          likes_count: number
           rating_count: number
           rating_sum: number
           route_distance_m: number
           route_duration_s: number
           route_polyline: string | null
+          saves_count: number
           start_label: string
           start_lat: number
           start_lng: number
           stops: Json
           tags: string[]
+          tips: string | null
           title: string
         }
         Insert: {
+          comments_count?: number
           created_at?: string
+          creator_avatar?: string | null
           creator_id: string
           creator_name: string
           description?: string | null
@@ -225,20 +326,26 @@ export type Database = {
           dest_lat: number
           dest_lng: number
           id?: string
+          images?: string[]
+          likes_count?: number
           rating_count?: number
           rating_sum?: number
           route_distance_m?: number
           route_duration_s?: number
           route_polyline?: string | null
+          saves_count?: number
           start_label: string
           start_lat: number
           start_lng: number
           stops?: Json
           tags?: string[]
+          tips?: string | null
           title: string
         }
         Update: {
+          comments_count?: number
           created_at?: string
+          creator_avatar?: string | null
           creator_id?: string
           creator_name?: string
           description?: string | null
@@ -246,16 +353,20 @@ export type Database = {
           dest_lat?: number
           dest_lng?: number
           id?: string
+          images?: string[]
+          likes_count?: number
           rating_count?: number
           rating_sum?: number
           route_distance_m?: number
           route_duration_s?: number
           route_polyline?: string | null
+          saves_count?: number
           start_label?: string
           start_lat?: number
           start_lng?: number
           stops?: Json
           tags?: string[]
+          tips?: string | null
           title?: string
         }
         Relationships: []
