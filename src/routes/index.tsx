@@ -16,6 +16,25 @@ import {
 
 export const Route = createFileRoute("/")({
   component: Landing,
+  head: () => ({
+    meta: [
+      { title: "SafeGo — Your Guide to Safer Travels" },
+      {
+        name: "description",
+        content:
+          "Travel with confidence using SafeGo: blockchain Digital ID, real-time safety zones, SOS alerts, and offline maps.",
+      },
+      { property: "og:title", content: "SafeGo — Your Guide to Safer Travels" },
+      {
+        property: "og:description",
+        content:
+          "Blockchain Digital ID, real-time safety zones, SOS alerts, and offline maps for safer travel.",
+      },
+      { property: "og:url", content: "/" },
+      { property: "og:type", content: "website" },
+    ],
+    links: [{ rel: "canonical", href: "/" }],
+  }),
 });
 
 function Landing() {
