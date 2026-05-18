@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { encodePolyline, downsamplePolyline } from "@/lib/polyline";
 import { Share2 } from "lucide-react";
+import { TourPhotoUpload } from "@/components/TourPhotoUpload";
 
 export interface ShareTourPayload {
   start: { pos: [number, number]; label: string };
