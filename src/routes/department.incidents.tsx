@@ -15,6 +15,17 @@ import { formatDistanceToNow } from "@/lib/format";
 import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/department/incidents")({
+  head: () => ({
+    meta: [
+      { title: "Incidents — SafeGo" },
+      { name: "description", content: "Review and manage tourist safety incidents reported to the department." },
+      { property: "og:title", content: "Incidents — SafeGo" },
+      { property: "og:description", content: "Review and manage tourist safety incidents reported to the department." },
+      { property: "og:url", content: "/department/incidents" },
+      { property: "og:type", content: "website" },
+    ],
+    links: [{ rel: "canonical", href: "/department/incidents" }],
+  }),
   component: Incidents,
 });
 

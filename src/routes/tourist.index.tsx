@@ -33,6 +33,17 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/tourist/")({
+  head: () => ({
+    meta: [
+      { title: "Tourist Dashboard — SafeGo" },
+      { name: "description", content: "Your SafeGo dashboard: live safety map, SOS, alerts, and recommended places nearby." },
+      { property: "og:title", content: "Tourist Dashboard — SafeGo" },
+      { property: "og:description", content: "Your SafeGo dashboard: live safety map, SOS, alerts, and recommended places nearby." },
+      { property: "og:url", content: "/tourist" },
+      { property: "og:type", content: "website" },
+    ],
+    links: [{ rel: "canonical", href: "/tourist" }],
+  }),
   component: TouristDashboard,
 });
 

@@ -12,6 +12,17 @@ import { useAuth } from "@/lib/auth";
 import { useEffect } from "react";
 
 export const Route = createFileRoute("/login")({
+  head: () => ({
+    meta: [
+      { title: "Sign In — SafeGo" },
+      { name: "description", content: "Sign in to SafeGo to access your Digital ID, safety zones, and emergency alerts." },
+      { property: "og:title", content: "Sign In — SafeGo" },
+      { property: "og:description", content: "Sign in to SafeGo to access your Digital ID, safety zones, and emergency alerts." },
+      { property: "og:url", content: "/login" },
+      { property: "og:type", content: "website" },
+    ],
+    links: [{ rel: "canonical", href: "/login" }],
+  }),
   component: Login,
 });
 

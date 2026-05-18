@@ -27,6 +27,17 @@ const searchSchema = z.object({
 });
 
 export const Route = createFileRoute("/department/map")({
+  head: () => ({
+    meta: [
+      { title: "Map Management — SafeGo" },
+      { name: "description", content: "Draw and manage safe, caution, and danger zones on the SafeGo map." },
+      { property: "og:title", content: "Map Management — SafeGo" },
+      { property: "og:description", content: "Draw and manage safe, caution, and danger zones on the SafeGo map." },
+      { property: "og:url", content: "/department/map" },
+      { property: "og:type", content: "website" },
+    ],
+    links: [{ rel: "canonical", href: "/department/map" }],
+  }),
   validateSearch: zodValidator(searchSchema),
   component: MapManagement,
 });

@@ -18,6 +18,17 @@ import { toast } from "sonner";
 import { Plus, Users, ArrowRight, LogIn, ArrowLeft } from "lucide-react";
 
 export const Route = createFileRoute("/tourist/groups/")({
+  head: () => ({
+    meta: [
+      { title: "Group Tours — SafeGo" },
+      { name: "description", content: "Create or join group tours and plan multi-stop routes with friends in SafeGo." },
+      { property: "og:title", content: "Group Tours — SafeGo" },
+      { property: "og:description", content: "Create or join group tours and plan multi-stop routes with friends in SafeGo." },
+      { property: "og:url", content: "/tourist/groups" },
+      { property: "og:type", content: "website" },
+    ],
+    links: [{ rel: "canonical", href: "/tourist/groups" }],
+  }),
   component: GroupsPage,
 });
 

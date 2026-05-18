@@ -7,6 +7,17 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { LogOut, Home, Users, Menu, Compass } from "lucide-react";
 
 export const Route = createFileRoute("/tourist")({
+  head: () => ({
+    meta: [
+      { title: "Tourist Portal — SafeGo" },
+      { name: "description", content: "SafeGo tourist portal: dashboard, group tours, and community travel plans." },
+      { property: "og:title", content: "Tourist Portal — SafeGo" },
+      { property: "og:description", content: "SafeGo tourist portal: dashboard, group tours, and community travel plans." },
+      { property: "og:url", content: "/tourist" },
+      { property: "og:type", content: "website" },
+    ],
+    links: [{ rel: "canonical", href: "/tourist" }],
+  }),
   component: TouristLayout,
 });
 

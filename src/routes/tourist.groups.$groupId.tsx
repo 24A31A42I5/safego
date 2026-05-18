@@ -32,6 +32,17 @@ import { ShareTourDialog, type ShareTourPayload } from "@/components/ShareTourDi
 import { Share2 } from "lucide-react";
 
 export const Route = createFileRoute("/tourist/groups/$groupId")({
+  head: () => ({
+    meta: [
+      { title: "Group Tour Planner — SafeGo" },
+      { name: "description", content: "Plan stops, preview the route, and start a live group tour with real-time tracking." },
+      { property: "og:title", content: "Group Tour Planner — SafeGo" },
+      { property: "og:description", content: "Plan stops, preview the route, and start a live group tour with real-time tracking." },
+      { property: "og:url", content: "/tourist/groups" },
+      { property: "og:type", content: "website" },
+    ],
+    links: [{ rel: "canonical", href: "/tourist/groups" }],
+  }),
   component: GroupDetail,
   validateSearch: (search: Record<string, unknown>) => ({
     applyTour: typeof search.applyTour === "string" ? search.applyTour : undefined,

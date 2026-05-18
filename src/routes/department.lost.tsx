@@ -9,6 +9,17 @@ import { formatDistanceToNow } from "@/lib/format";
 import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/department/lost")({
+  head: () => ({
+    meta: [
+      { title: "Lost & Found — SafeGo" },
+      { name: "description", content: "Manage lost and found reports filed by tourists in SafeGo." },
+      { property: "og:title", content: "Lost & Found — SafeGo" },
+      { property: "og:description", content: "Manage lost and found reports filed by tourists in SafeGo." },
+      { property: "og:url", content: "/department/lost" },
+      { property: "og:type", content: "website" },
+    ],
+    links: [{ rel: "canonical", href: "/department/lost" }],
+  }),
   component: LostFound,
 });
 

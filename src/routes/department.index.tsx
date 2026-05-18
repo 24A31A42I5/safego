@@ -32,6 +32,17 @@ const searchSchema = z.object({
 });
 
 export const Route = createFileRoute("/department/")({
+  head: () => ({
+    meta: [
+      { title: "Department Dashboard — SafeGo" },
+      { name: "description", content: "Department dashboard with live incidents, SOS alerts, and zone activity." },
+      { property: "og:title", content: "Department Dashboard — SafeGo" },
+      { property: "og:description", content: "Department dashboard with live incidents, SOS alerts, and zone activity." },
+      { property: "og:url", content: "/department" },
+      { property: "og:type", content: "website" },
+    ],
+    links: [{ rel: "canonical", href: "/department" }],
+  }),
   validateSearch: zodValidator(searchSchema),
   component: DeptHome,
 });
