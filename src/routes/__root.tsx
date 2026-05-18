@@ -36,8 +36,38 @@ export const Route = createRootRoute({
         content:
           "SafeGo provides a secure Digital ID, real-time safety zones, and instant emergency alerts for safer travel.",
       },
+      { property: "og:site_name", content: "SafeGo" },
+      { property: "og:type", content: "website" },
+      { property: "og:title", content: "SafeGo — Tourist Safety Platform" },
+      {
+        property: "og:description",
+        content:
+          "Secure Digital ID, real-time safety zones, and instant emergency alerts for safer travel.",
+      },
+      { property: "og:url", content: "/" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Organization",
+              name: "SafeGo",
+              description: "Tourist safety platform with Digital ID, safety zones, and SOS alerts.",
+            },
+            {
+              "@type": "WebSite",
+              name: "SafeGo",
+              description: "Your Guide to Safer Travels.",
+            },
+          ],
+        }),
+      },
+    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,
