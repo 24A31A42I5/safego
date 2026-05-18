@@ -33,7 +33,10 @@ export function ShareTourDialog({ open, onOpenChange, payload }: Props) {
   const { user, profile } = useAuth();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [tips, setTips] = useState("");
   const [tags, setTags] = useState<string[]>([]);
+  const [images, setImages] = useState<string[]>([]);
+  const [stopNotes, setStopNotes] = useState<Record<number, string>>({});
   const [busy, setBusy] = useState(false);
 
   const toggleTag = (t: string) =>
@@ -55,12 +58,15 @@ export function ShareTourDialog({ open, onOpenChange, payload }: Props) {
         lat: s.pos[0],
         lng: s.pos[1],
         order: i,
+        description: stopNotes[i]?.trim() || undefined,
       }));
       const { error } = await supabase.from("shared_tours").insert({
         creator_id: user.id,
         creator_name: profile.full_name,
         title: title.trim(),
         description: description.trim() || null,
+        tips: tips.trim() || null,
+        images,
         start_label: payload.start.label,
         start_lat: payload.start.pos[0],
         start_lng: payload.start.pos[1],
@@ -77,7 +83,10 @@ export function ShareTourDialog({ open, onOpenChange, payload }: Props) {
       toast.success("Plan shared with the community 🎉");
       setTitle("");
       setDescription("");
+      setTips("");
       setTags([]);
+      setImages([]);
+      setStopNotes({});
       onOpenChange(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not share plan");
