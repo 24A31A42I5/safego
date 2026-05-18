@@ -7,6 +7,17 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { LogOut, Home, Siren, Map, UserSearch, AlertTriangle, Menu } from "lucide-react";
 
 export const Route = createFileRoute("/department")({
+  head: () => ({
+    meta: [
+      { title: "Department Console — SafeGo" },
+      { name: "description", content: "SafeGo department console for SOS, zone, map, and incident management." },
+      { property: "og:title", content: "Department Console — SafeGo" },
+      { property: "og:description", content: "SafeGo department console for SOS, zone, map, and incident management." },
+      { property: "og:url", content: "/department" },
+      { property: "og:type", content: "website" },
+    ],
+    links: [{ rel: "canonical", href: "/department" }],
+  }),
   component: DeptLayout,
 });
 

@@ -12,6 +12,17 @@ import { generateDigitalId } from "@/lib/digital-id";
 import { User, Building2, ArrowRight, Check } from "lucide-react";
 
 export const Route = createFileRoute("/signup")({
+  head: () => ({
+    meta: [
+      { title: "Create Account — SafeGo" },
+      { name: "description", content: "Sign up for SafeGo to generate a secure Digital ID and travel with safety alerts and SOS." },
+      { property: "og:title", content: "Create Account — SafeGo" },
+      { property: "og:description", content: "Sign up for SafeGo to generate a secure Digital ID and travel with safety alerts and SOS." },
+      { property: "og:url", content: "/signup" },
+      { property: "og:type", content: "website" },
+    ],
+    links: [{ rel: "canonical", href: "/signup" }],
+  }),
   component: Signup,
 });
 

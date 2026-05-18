@@ -100,7 +100,7 @@ function ClickHandler({
 function avatarIcon(opts: { avatarUrl?: string | null; initials?: string; color?: string }): L.DivIcon {
   const bg = opts.color ?? "#3b82f6";
   const inner = opts.avatarUrl
-    ? `<img src="${opts.avatarUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" />`
+    ? `<img src="${opts.avatarUrl}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%" />`
     : `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:#fff;font-weight:600;font-size:13px;font-family:system-ui">${opts.initials ?? "•"}</div>`;
   return L.divIcon({
     className: "",
