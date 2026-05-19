@@ -561,10 +561,17 @@ function TourPostCard({
         <CardContent className="space-y-2 p-3">
           <h3 className="font-semibold leading-tight">{tour.title}</h3>
           {tour.description && <p className="line-clamp-2 text-xs text-muted-foreground">{tour.description}</p>}
+          {tour.stops.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
+              <MapPin className="h-3 w-3" />
+              {tour.stops.slice(0, 3).map((s) => s.name.split(",")[0]).join(" • ")}
+              {tour.stops.length > 3 && ` +${tour.stops.length - 3}`}
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
             <span className="inline-flex items-center gap-1"><RouteIcon className="h-3 w-3" />{formatDistance(tour.route_distance_m)}</span>
             <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{formatDuration(tour.route_duration_s)}</span>
-            <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" />{tour.stops.length} stops</span>
+            <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" />{tour.stops.length + 2} locations</span>
             {tour.tags.slice(0, 3).map((tag) => (
               <Badge key={tag} variant="outline" className="text-[10px] capitalize">{tag}</Badge>
             ))}
