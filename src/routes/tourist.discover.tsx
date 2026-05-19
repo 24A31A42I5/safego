@@ -320,13 +320,18 @@ function DiscoverPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold">
-          <Compass className="h-6 w-6 text-primary" /> Discover tour plans
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          A community feed of real travel routes — photos, tips, and itineraries you can reuse.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-bold">
+            <Compass className="h-6 w-6 text-primary" /> Discover tour plans
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            A community feed of real travel routes — photos, tips, and itineraries you can reuse.
+          </p>
+        </div>
+        <Button onClick={() => setUploadOpen(true)} className="hidden sm:inline-flex">
+          <Upload className="mr-1 h-4 w-4" /> Upload your plan
+        </Button>
       </div>
 
       <Card>
