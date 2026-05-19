@@ -287,23 +287,35 @@ function DiscoverPage() {
     }
   };
 
-  const useThisPlan = (tour: ScoredTour) => {
-    setPendingTour(tour);
-    if (groups.length === 0) {
-      toast.info("Create a tour group first to load this plan");
+  const useThisPlan = async (tour: ScoredTour) => {
+    if (!user) {
+      toast.info("Sign in to use this plan");
       return;
     }
-    setPickGroupOpen(true);
-  };
-
-  const applyToGroup = (groupId: string) => {
-    if (!pendingTour) return;
-    setPickGroupOpen(false);
-    navigate({
-      to: "/tourist/groups/$groupId",
-      params: { groupId },
-      search: { applyTour: pendingTour.id },
-    });
+    if (useBusy) return;
+    setUseBusy(tour.id);
+    try {
+      const groupName = tour.title.slice(0, 60) || "Community trip";
+      const { data: g, error } = await supabase
+        .from("tour_groups")
+        .insert({ name: groupName, creator_id: user.id })
+        .select("id")
+        .single();
+      if (error || !g) throw error ?? new Error("Failed to create group");
+      await supabase
+        .from("tour_group_members")
+        .insert({ group_id: g.id, user_id: user.id });
+      toast.success("New group created — loading plan");
+      navigate({
+        to: "/tourist/groups/$groupId",
+        params: { groupId: g.id },
+        search: { applyTour: tour.id },
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not create group");
+    } finally {
+      setUseBusy(null);
+    }
   };
 
   return (
