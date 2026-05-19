@@ -462,28 +462,17 @@ function DiscoverPage() {
         saved={selected ? mySaves.has(selected.id) : false}
       />
 
-      <Dialog open={pickGroupOpen} onOpenChange={setPickGroupOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Apply plan to a group</DialogTitle>
-            <DialogDescription>
-              Choose one of your tour groups. The current route will be replaced (you can edit afterwards).
-            </DialogDescription>
-          </DialogHeader>
-          <div className="max-h-[300px] space-y-1 overflow-y-auto">
-            {groups.map((g) => (
-              <button key={g.id} type="button" onClick={() => applyToGroup(g.id)}
-                className="flex w-full items-center justify-between rounded-md border p-2 text-left text-sm hover:bg-accent/50">
-                <span className="truncate">{g.name}</span>
-                <Badge variant="outline">Use here</Badge>
-              </button>
-            ))}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPickGroupOpen(false)}>Cancel</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CreateTourPlanDialog open={uploadOpen} onOpenChange={setUploadOpen} onPublished={() => { setUploadOpen(false); void runSearch(); }} />
+
+      {/* Floating action button (mobile) */}
+      <Button
+        onClick={() => setUploadOpen(true)}
+        className="fixed bottom-20 right-4 z-40 h-14 w-14 rounded-full shadow-lg sm:hidden"
+        size="icon"
+        aria-label="Upload your plan"
+      >
+        <Plus className="h-6 w-6" />
+      </Button>
     </div>
   );
 }
