@@ -38,7 +38,20 @@ export const Route = createFileRoute("/tourist/discover")({
   }),
 });
 
-interface Stop { name: string; lat: number; lng: number; order: number; description?: string }
+interface Stop {
+  name: string;
+  lat: number;
+  lng: number;
+  order: number;
+  description?: string;
+  detailedDescription?: string;
+  images?: string[];
+  stayDuration?: string;
+  bestTimeToVisit?: string;
+  travelTips?: string;
+  warnings?: string;
+  estimatedCost?: string;
+}
 interface SharedTourRow {
   id: string;
   creator_id: string;
@@ -548,10 +561,17 @@ function TourPostCard({
         <CardContent className="space-y-2 p-3">
           <h3 className="font-semibold leading-tight">{tour.title}</h3>
           {tour.description && <p className="line-clamp-2 text-xs text-muted-foreground">{tour.description}</p>}
+          {tour.stops.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
+              <MapPin className="h-3 w-3" />
+              {tour.stops.slice(0, 3).map((s) => s.name.split(",")[0]).join(" • ")}
+              {tour.stops.length > 3 && ` +${tour.stops.length - 3}`}
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
             <span className="inline-flex items-center gap-1"><RouteIcon className="h-3 w-3" />{formatDistance(tour.route_distance_m)}</span>
             <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{formatDuration(tour.route_duration_s)}</span>
-            <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" />{tour.stops.length} stops</span>
+            <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" />{tour.stops.length + 2} locations</span>
             {tour.tags.slice(0, 3).map((tag) => (
               <Badge key={tag} variant="outline" className="text-[10px] capitalize">{tag}</Badge>
             ))}
@@ -666,24 +686,68 @@ function TourDetailDialog({
           )}
 
           <div>
-            <h4 className="mb-2 text-sm font-semibold">Itinerary</h4>
-            <ol className="space-y-2">
-              <li className="flex gap-2 text-sm">
-                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-[10px] font-bold text-white">A</span>
-                <span className="truncate">{tour.start_label}</span>
+            <h4 className="mb-2 text-sm font-semibold">Journey itinerary</h4>
+            <ol className="relative space-y-3 border-l-2 border-dashed border-muted pl-5">
+              <li className="relative">
+                <span className="absolute -left-[26px] flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-[10px] font-bold text-white">A</span>
+                <div className="text-sm font-medium">Start · {tour.start_label.split(",")[0]}</div>
+                <div className="truncate text-[11px] text-muted-foreground">{tour.start_label}</div>
               </li>
               {stops.map((s, i) => (
-                <li key={i} className="flex gap-2 text-sm">
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sky-500 text-[10px] font-bold text-white">{i + 1}</span>
-                  <div className="min-w-0">
-                    <div className="truncate font-medium">{s.name}</div>
-                    {s.description && <div className="text-xs text-muted-foreground">{s.description}</div>}
+                <li key={i} className="relative">
+                  <span className="absolute -left-[26px] flex h-5 w-5 items-center justify-center rounded-full bg-sky-500 text-[10px] font-bold text-white">{i + 1}</span>
+                  <div className="rounded-md border bg-card p-2.5">
+                    <div className="text-sm font-semibold">{s.name}</div>
+                    {(s.detailedDescription || s.description) && (
+                      <p className="mt-0.5 whitespace-pre-wrap text-xs text-muted-foreground">
+                        {s.detailedDescription || s.description}
+                      </p>
+                    )}
+                    {Array.isArray(s.images) && s.images.length > 0 && (
+                      <div className="mt-2 -mx-0.5 flex gap-1.5 overflow-x-auto pb-1">
+                        {s.images.map((src, idx) => (
+                          <img
+                            key={idx}
+                            src={src}
+                            alt={`${s.name} photo ${idx + 1}`}
+                            loading="lazy"
+                            className="h-20 w-28 shrink-0 rounded object-cover"
+                          />
+                        ))}
+                      </div>
+                    )}
+                    {(s.stayDuration || s.bestTimeToVisit || s.estimatedCost) && (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {s.stayDuration && (
+                          <Badge variant="secondary" className="gap-1 text-[10px]">
+                            <Clock className="h-3 w-3" />{s.stayDuration}
+                          </Badge>
+                        )}
+                        {s.bestTimeToVisit && (
+                          <Badge variant="secondary" className="text-[10px]">🗓 {s.bestTimeToVisit}</Badge>
+                        )}
+                        {s.estimatedCost && (
+                          <Badge variant="secondary" className="text-[10px]">💰 {s.estimatedCost}</Badge>
+                        )}
+                      </div>
+                    )}
+                    {s.travelTips && (
+                      <div className="mt-2 rounded border-l-2 border-primary/60 bg-primary/5 px-2 py-1 text-[11px]">
+                        💡 {s.travelTips}
+                      </div>
+                    )}
+                    {s.warnings && (
+                      <div className="mt-1.5 rounded border-l-2 border-amber-500 bg-amber-500/10 px-2 py-1 text-[11px]">
+                        ⚠️ {s.warnings}
+                      </div>
+                    )}
                   </div>
                 </li>
               ))}
-              <li className="flex gap-2 text-sm">
-                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white">B</span>
-                <span className="truncate">{tour.dest_label}</span>
+              <li className="relative">
+                <span className="absolute -left-[26px] flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white">B</span>
+                <div className="text-sm font-medium">Destination · {tour.dest_label.split(",")[0]}</div>
+                <div className="truncate text-[11px] text-muted-foreground">{tour.dest_label}</div>
               </li>
             </ol>
           </div>
