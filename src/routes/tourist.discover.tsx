@@ -38,7 +38,20 @@ export const Route = createFileRoute("/tourist/discover")({
   }),
 });
 
-interface Stop { name: string; lat: number; lng: number; order: number; description?: string }
+interface Stop {
+  name: string;
+  lat: number;
+  lng: number;
+  order: number;
+  description?: string;
+  detailedDescription?: string;
+  images?: string[];
+  stayDuration?: string;
+  bestTimeToVisit?: string;
+  travelTips?: string;
+  warnings?: string;
+  estimatedCost?: string;
+}
 interface SharedTourRow {
   id: string;
   creator_id: string;
