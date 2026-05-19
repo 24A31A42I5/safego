@@ -11,18 +11,19 @@ import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
   Search, Compass, MapPin, Heart, MessageCircle, Bookmark, Share2,
   Clock, Route as RouteIcon, Users, Sparkles, Filter, X, Loader2,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Plus, Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 import { decodePolyline } from "@/lib/polyline";
 import { haversine, pointsBounds } from "@/lib/geo";
 import { formatDistance, formatDuration } from "@/lib/routing";
 import { TourCommentsPanel } from "@/components/TourCommentsPanel";
+import { CreateTourPlanDialog } from "@/components/CreateTourPlanDialog";
 
 export const Route = createFileRoute("/tourist/discover")({
   component: DiscoverPage,
@@ -109,22 +110,15 @@ function DiscoverPage() {
   const [results, setResults] = useState<ScoredTour[]>([]);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<ScoredTour | null>(null);
-  const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
-  const [pickGroupOpen, setPickGroupOpen] = useState(false);
-  const [pendingTour, setPendingTour] = useState<ScoredTour | null>(null);
   const [myLikes, setMyLikes] = useState<Set<string>>(new Set());
   const [mySaves, setMySaves] = useState<Set<string>>(new Set());
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [useBusy, setUseBusy] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasSearch = !!(start || dest);
 
   useEffect(() => {
-    if (!user) return;
-    supabase
-      .from("tour_groups")
-      .select("id, name")
-      .eq("creator_id", user.id)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => setGroups(data ?? []));
+    // no-op; group is auto-created on "Use this plan"
   }, [user]);
 
   // load my likes/saves once
@@ -293,34 +287,51 @@ function DiscoverPage() {
     }
   };
 
-  const useThisPlan = (tour: ScoredTour) => {
-    setPendingTour(tour);
-    if (groups.length === 0) {
-      toast.info("Create a tour group first to load this plan");
+  const useThisPlan = async (tour: ScoredTour) => {
+    if (!user) {
+      toast.info("Sign in to use this plan");
       return;
     }
-    setPickGroupOpen(true);
-  };
-
-  const applyToGroup = (groupId: string) => {
-    if (!pendingTour) return;
-    setPickGroupOpen(false);
-    navigate({
-      to: "/tourist/groups/$groupId",
-      params: { groupId },
-      search: { applyTour: pendingTour.id },
-    });
+    if (useBusy) return;
+    setUseBusy(tour.id);
+    try {
+      const groupName = tour.title.slice(0, 60) || "Community trip";
+      const { data: g, error } = await supabase
+        .from("tour_groups")
+        .insert({ name: groupName, creator_id: user.id })
+        .select("id")
+        .single();
+      if (error || !g) throw error ?? new Error("Failed to create group");
+      await supabase
+        .from("tour_group_members")
+        .insert({ group_id: g.id, user_id: user.id });
+      toast.success("New group created — loading plan");
+      navigate({
+        to: "/tourist/groups/$groupId",
+        params: { groupId: g.id },
+        search: { applyTour: tour.id },
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not create group");
+    } finally {
+      setUseBusy(null);
+    }
   };
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold">
-          <Compass className="h-6 w-6 text-primary" /> Discover tour plans
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          A community feed of real travel routes — photos, tips, and itineraries you can reuse.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-bold">
+            <Compass className="h-6 w-6 text-primary" /> Discover tour plans
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            A community feed of real travel routes — photos, tips, and itineraries you can reuse.
+          </p>
+        </div>
+        <Button onClick={() => setUploadOpen(true)} className="hidden sm:inline-flex">
+          <Upload className="mr-1 h-4 w-4" /> Upload your plan
+        </Button>
       </div>
 
       <Card>
@@ -456,28 +467,17 @@ function DiscoverPage() {
         saved={selected ? mySaves.has(selected.id) : false}
       />
 
-      <Dialog open={pickGroupOpen} onOpenChange={setPickGroupOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Apply plan to a group</DialogTitle>
-            <DialogDescription>
-              Choose one of your tour groups. The current route will be replaced (you can edit afterwards).
-            </DialogDescription>
-          </DialogHeader>
-          <div className="max-h-[300px] space-y-1 overflow-y-auto">
-            {groups.map((g) => (
-              <button key={g.id} type="button" onClick={() => applyToGroup(g.id)}
-                className="flex w-full items-center justify-between rounded-md border p-2 text-left text-sm hover:bg-accent/50">
-                <span className="truncate">{g.name}</span>
-                <Badge variant="outline">Use here</Badge>
-              </button>
-            ))}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPickGroupOpen(false)}>Cancel</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CreateTourPlanDialog open={uploadOpen} onOpenChange={setUploadOpen} onPublished={() => { setUploadOpen(false); void runSearch(); }} />
+
+      {/* Floating action button (mobile) */}
+      <Button
+        onClick={() => setUploadOpen(true)}
+        className="fixed bottom-20 right-4 z-40 h-14 w-14 rounded-full shadow-lg sm:hidden"
+        size="icon"
+        aria-label="Upload your plan"
+      >
+        <Plus className="h-6 w-6" />
+      </Button>
     </div>
   );
 }

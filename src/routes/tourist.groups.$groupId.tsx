@@ -154,7 +154,8 @@ function GroupDetail() {
         navigate({ search: { applyTour: undefined }, replace: true });
         return;
       }
-      const ok = window.confirm(`Replace current route with "${data.title}"?`);
+      const isEmpty = stops.length === 0;
+      const ok = isEmpty || window.confirm(`Replace current route with "${data.title}"?`);
       if (!ok) {
         navigate({ search: { applyTour: undefined }, replace: true });
         return;
