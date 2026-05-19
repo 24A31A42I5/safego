@@ -81,7 +81,7 @@ function Landing() {
         />
         <div className="absolute inset-0 -z-10 bg-gradient-to-br from-primary/80 via-primary/60 to-black/70" />
         <div className="mx-auto max-w-6xl px-4 py-24 text-center text-white">
-          <h1 className="mx-auto max-w-3xl text-4xl font-bold tracking-tight md:text-6xl">
+          <h1 className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border shadow-sm hover:text-accent-foreground h-10 rounded-md px-8 border-white/40 bg-white/10 hover:bg-white/20 text-black">
             Your Guide to Safer Travels
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-base text-white/85 md:text-lg">
