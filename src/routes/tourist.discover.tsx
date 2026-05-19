@@ -118,13 +118,7 @@ function DiscoverPage() {
   const hasSearch = !!(start || dest);
 
   useEffect(() => {
-    if (!user) return;
-    supabase
-      .from("tour_groups")
-      .select("id, name")
-      .eq("creator_id", user.id)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => setGroups(data ?? []));
+    // no-op; group is auto-created on "Use this plan"
   }, [user]);
 
   // load my likes/saves once
