@@ -1,16 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { encodePolyline, downsamplePolyline } from "@/lib/polyline";
-import { Share2 } from "lucide-react";
+import { Share2, MapPin } from "lucide-react";
 import { TourPhotoUpload } from "@/components/TourPhotoUpload";
+import { type RichStop, type StopDraft, emptyStopDraft } from "@/lib/tour-stop";
 
 export interface ShareTourPayload {
   start: { pos: [number, number]; label: string };
@@ -36,11 +38,27 @@ export function ShareTourDialog({ open, onOpenChange, payload }: Props) {
   const [tips, setTips] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [images, setImages] = useState<string[]>([]);
-  const [stopNotes, setStopNotes] = useState<Record<number, string>>({});
+  const [stopDrafts, setStopDrafts] = useState<StopDraft[]>([]);
   const [busy, setBusy] = useState(false);
+
+  // (Re)sync drafts whenever payload stops change or dialog opens
+  useEffect(() => {
+    if (!open || !payload) return;
+    setStopDrafts((prev) => {
+      const next = payload.intermediateStops.map((s, i) => {
+        const existing = prev[i];
+        const guessName = s.label.startsWith("Stop @") ? "" : s.label.split(",")[0];
+        return existing && existing.name !== "" ? existing : emptyStopDraft(guessName);
+      });
+      return next;
+    });
+  }, [open, payload]);
 
   const toggleTag = (t: string) =>
     setTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
+
+  const updateDraft = (i: number, patch: Partial<StopDraft>) =>
+    setStopDrafts((p) => p.map((d, idx) => (idx === i ? { ...d, ...patch } : d)));
 
   const submit = async () => {
     if (!user || !profile || !payload) return;
@@ -53,13 +71,24 @@ export function ShareTourDialog({ open, onOpenChange, payload }: Props) {
       const polyline = payload.routeCoordinates
         ? encodePolyline(downsamplePolyline(payload.routeCoordinates, 200))
         : null;
-      const stops = payload.intermediateStops.map((s, i) => ({
-        name: s.label,
-        lat: s.pos[0],
-        lng: s.pos[1],
-        order: i,
-        description: stopNotes[i]?.trim() || undefined,
-      }));
+      const stops: RichStop[] = payload.intermediateStops.map((s, i) => {
+        const d = stopDrafts[i] ?? emptyStopDraft();
+        const cleanedName = d.name.trim() || s.label;
+        return {
+          name: cleanedName,
+          lat: s.pos[0],
+          lng: s.pos[1],
+          order: i,
+          description: d.detailedDescription.trim().slice(0, 160) || undefined,
+          detailedDescription: d.detailedDescription.trim() || undefined,
+          images: d.images.length ? d.images : undefined,
+          stayDuration: d.stayDuration.trim() || undefined,
+          bestTimeToVisit: d.bestTimeToVisit.trim() || undefined,
+          travelTips: d.travelTips.trim() || undefined,
+          warnings: d.warnings.trim() || undefined,
+          estimatedCost: d.estimatedCost.trim() || undefined,
+        };
+      });
       const { error } = await supabase.from("shared_tours").insert({
         creator_id: user.id,
         creator_name: profile.full_name,
@@ -73,7 +102,7 @@ export function ShareTourDialog({ open, onOpenChange, payload }: Props) {
         dest_label: payload.destination.label,
         dest_lat: payload.destination.pos[0],
         dest_lng: payload.destination.pos[1],
-        stops,
+        stops: stops as unknown as never,
         route_polyline: polyline,
         route_distance_m: payload.routeDistanceM,
         route_duration_s: payload.routeDurationS,
@@ -86,7 +115,7 @@ export function ShareTourDialog({ open, onOpenChange, payload }: Props) {
       setTips("");
       setTags([]);
       setImages([]);
-      setStopNotes({});
+      setStopDrafts([]);
       onOpenChange(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not share plan");
@@ -97,13 +126,13 @@ export function ShareTourDialog({ open, onOpenChange, payload }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto">
+      <DialogContent className="max-h-[92vh] max-w-lg overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Share2 className="h-4 w-4" /> Share this plan
+            <Share2 className="h-4 w-4" /> Share this journey
           </DialogTitle>
           <DialogDescription>
-            Help other travellers — publish this route so they can reuse it.
+            Add rich details for each stop so other travellers know what to expect.
           </DialogDescription>
         </DialogHeader>
 
@@ -121,26 +150,26 @@ export function ShareTourDialog({ open, onOpenChange, payload }: Props) {
 
         <div className="space-y-3">
           <div className="space-y-1">
-            <Label htmlFor="tour-title">Title</Label>
+            <Label htmlFor="tour-title">Journey title</Label>
             <Input
               id="tour-title"
               value={title}
               onChange={(e) => setTitle(e.target.value.slice(0, 80))}
-              placeholder="e.g. Weekend temples around Madurai"
+              placeholder="e.g. Hill stations & coffee plantations around Araku"
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="tour-desc">Description</Label>
+            <Label htmlFor="tour-desc">Overall description</Label>
             <Textarea
               id="tour-desc"
               value={description}
               onChange={(e) => setDescription(e.target.value.slice(0, 500))}
-              placeholder="What's special about this trip?"
+              placeholder="What makes this journey special?"
               rows={3}
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="tour-tips">Travel tips (optional)</Label>
+            <Label htmlFor="tour-tips">Overall travel tips (optional)</Label>
             <Textarea
               id="tour-tips"
               value={tips}
@@ -150,34 +179,117 @@ export function ShareTourDialog({ open, onOpenChange, payload }: Props) {
             />
           </div>
           <div className="space-y-1">
-            <Label>Photos</Label>
+            <Label>Cover photos</Label>
             <TourPhotoUpload value={images} onChange={setImages} max={6} />
           </div>
+
           {payload && payload.intermediateStops.length > 0 && (
             <div className="space-y-1">
-              <Label>Notes per stop (optional)</Label>
-              <div className="space-y-1.5">
-                {payload.intermediateStops.map((s, i) => (
-                  <div key={i} className="flex items-start gap-2">
-                    <span className="mt-2 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sky-500 text-[10px] font-bold text-white">
-                      {i + 1}
-                    </span>
-                    <div className="flex-1 space-y-0.5">
-                      <div className="truncate text-xs font-medium">{s.label}</div>
-                      <Input
-                        value={stopNotes[i] ?? ""}
-                        onChange={(e) =>
-                          setStopNotes((p) => ({ ...p, [i]: e.target.value.slice(0, 200) }))
-                        }
-                        placeholder="What to do or see here…"
-                        className="h-8 text-xs"
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <Label>Stop details</Label>
+              <p className="text-[11px] text-muted-foreground">
+                Tap a stop to add description, photos, best time, tips and more.
+              </p>
+              <Accordion type="multiple" className="rounded-md border">
+                {payload.intermediateStops.map((s, i) => {
+                  const draft = stopDrafts[i] ?? emptyStopDraft();
+                  return (
+                    <AccordionItem key={i} value={`stop-${i}`} className="border-b last:border-b-0">
+                      <AccordionTrigger className="px-3 py-2 text-sm hover:no-underline">
+                        <span className="flex min-w-0 items-center gap-2 text-left">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sky-500 text-[10px] font-bold text-white">
+                            {i + 1}
+                          </span>
+                          <span className="min-w-0 truncate">
+                            {draft.name || s.label || `Stop ${i + 1}`}
+                          </span>
+                        </span>
+                      </AccordionTrigger>
+                      <AccordionContent className="space-y-2 px-3 pb-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Place name</Label>
+                          <Input
+                            value={draft.name}
+                            onChange={(e) => updateDraft(i, { name: e.target.value.slice(0, 80) })}
+                            placeholder="e.g. Araku Valley"
+                            className="h-8"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Description</Label>
+                          <Textarea
+                            value={draft.detailedDescription}
+                            onChange={(e) => updateDraft(i, { detailedDescription: e.target.value.slice(0, 500) })}
+                            placeholder="Why is this place worth visiting? What to do here?"
+                            rows={2}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Photos</Label>
+                          <TourPhotoUpload
+                            value={draft.images}
+                            onChange={(urls) => updateDraft(i, { images: urls })}
+                            max={4}
+                          />
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Recommended stay</Label>
+                            <Input
+                              value={draft.stayDuration}
+                              onChange={(e) => updateDraft(i, { stayDuration: e.target.value.slice(0, 40) })}
+                              placeholder="e.g. 2 hours"
+                              className="h-8"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Best time to visit</Label>
+                            <Input
+                              value={draft.bestTimeToVisit}
+                              onChange={(e) => updateDraft(i, { bestTimeToVisit: e.target.value.slice(0, 60) })}
+                              placeholder="e.g. Winter mornings"
+                              className="h-8"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Estimated cost</Label>
+                            <Input
+                              value={draft.estimatedCost}
+                              onChange={(e) => updateDraft(i, { estimatedCost: e.target.value.slice(0, 40) })}
+                              placeholder="e.g. ₹300 / Free"
+                              className="h-8"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Tips</Label>
+                            <Input
+                              value={draft.travelTips}
+                              onChange={(e) => updateDraft(i, { travelTips: e.target.value.slice(0, 160) })}
+                              placeholder="e.g. Carry water"
+                              className="h-8"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Warnings (optional)</Label>
+                          <Input
+                            value={draft.warnings}
+                            onChange={(e) => updateDraft(i, { warnings: e.target.value.slice(0, 200) })}
+                            placeholder="e.g. Avoid night driving in monsoon"
+                            className="h-8"
+                          />
+                        </div>
+                        <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                          <MapPin className="h-3 w-3" />
+                          {s.pos[0].toFixed(4)}, {s.pos[1].toFixed(4)}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
             </div>
           )}
+
           <div className="space-y-1">
             <Label>Tags</Label>
             <div className="flex flex-wrap gap-1.5">
@@ -197,7 +309,7 @@ export function ShareTourDialog({ open, onOpenChange, payload }: Props) {
             Cancel
           </Button>
           <Button onClick={submit} disabled={busy || !title.trim()}>
-            {busy ? "Publishing…" : "Publish plan"}
+            {busy ? "Publishing…" : "Publish journey"}
           </Button>
         </DialogFooter>
       </DialogContent>
