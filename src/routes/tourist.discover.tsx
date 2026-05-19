@@ -110,11 +110,10 @@ function DiscoverPage() {
   const [results, setResults] = useState<ScoredTour[]>([]);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<ScoredTour | null>(null);
-  const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
-  const [pickGroupOpen, setPickGroupOpen] = useState(false);
-  const [pendingTour, setPendingTour] = useState<ScoredTour | null>(null);
   const [myLikes, setMyLikes] = useState<Set<string>>(new Set());
   const [mySaves, setMySaves] = useState<Set<string>>(new Set());
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [useBusy, setUseBusy] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasSearch = !!(start || dest);
 
