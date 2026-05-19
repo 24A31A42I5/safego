@@ -11,18 +11,19 @@ import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
   Search, Compass, MapPin, Heart, MessageCircle, Bookmark, Share2,
   Clock, Route as RouteIcon, Users, Sparkles, Filter, X, Loader2,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Plus, Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 import { decodePolyline } from "@/lib/polyline";
 import { haversine, pointsBounds } from "@/lib/geo";
 import { formatDistance, formatDuration } from "@/lib/routing";
 import { TourCommentsPanel } from "@/components/TourCommentsPanel";
+import { CreateTourPlanDialog } from "@/components/CreateTourPlanDialog";
 
 export const Route = createFileRoute("/tourist/discover")({
   component: DiscoverPage,
