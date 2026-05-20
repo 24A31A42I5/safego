@@ -199,7 +199,7 @@ function GroupDetail() {
         thingsToCarry?: string;
         transportAvailability?: TransportOption[];
       };
-      const sortedStops = [...(data.stops as SharedStop[])].sort((a, b) => a.order - b.order);
+      const sortedStops = [...(data.stops as unknown as SharedStop[])].sort((a, b) => a.order - b.order);
       const next: Stop[] = [
         { pos: [data.start_lat, data.start_lng], label: data.start_label },
         ...sortedStops.map((s) => ({
