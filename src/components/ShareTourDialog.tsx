@@ -12,7 +12,14 @@ import { toast } from "sonner";
 import { encodePolyline, downsamplePolyline } from "@/lib/polyline";
 import { Share2, MapPin } from "lucide-react";
 import { TourPhotoUpload } from "@/components/TourPhotoUpload";
-import { type RichStop, type StopDraft, emptyStopDraft } from "@/lib/tour-stop";
+import {
+  type RichStop,
+  type StopDraft,
+  type TransportOption,
+  type TransportType,
+  TRANSPORT_OPTIONS,
+  emptyStopDraft,
+} from "@/lib/tour-stop";
 
 export interface ShareTourPayload {
   start: { pos: [number, number]; label: string };
@@ -87,6 +94,8 @@ export function ShareTourDialog({ open, onOpenChange, payload }: Props) {
           travelTips: d.travelTips.trim() || undefined,
           warnings: d.warnings.trim() || undefined,
           estimatedCost: d.estimatedCost.trim() || undefined,
+          thingsToCarry: d.thingsToCarry.trim() || undefined,
+          transportAvailability: d.transportAvailability.length ? d.transportAvailability : undefined,
         };
       });
       const { error } = await supabase.from("shared_tours").insert({
