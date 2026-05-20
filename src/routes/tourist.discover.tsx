@@ -745,6 +745,31 @@ function TourDetailDialog({
                         ⚠️ {s.warnings}
                       </div>
                     )}
+                    {s.thingsToCarry && (
+                      <div className="mt-1.5 rounded border-l-2 border-emerald-500 bg-emerald-500/10 px-2 py-1 text-[11px]">
+                        🎒 {s.thingsToCarry}
+                      </div>
+                    )}
+                    {Array.isArray(s.transportAvailability) && s.transportAvailability.length > 0 && (
+                      <div className="mt-2 space-y-1.5 rounded-md border bg-muted/40 p-2">
+                        <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Transport availability
+                        </div>
+                        {s.transportAvailability.map((t) => {
+                          const meta = TRANSPORT_OPTIONS.find((o) => o.type === t.type);
+                          return (
+                            <div key={t.type} className="text-[11px]">
+                              <div className="font-medium">
+                                {meta?.icon} {meta?.label}
+                              </div>
+                              {t.details && (
+                                <p className="whitespace-pre-wrap text-muted-foreground">{t.details}</p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </li>
               ))}
