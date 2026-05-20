@@ -287,6 +287,19 @@ export function ShareTourDialog({ open, onOpenChange, payload }: Props) {
                             className="h-8"
                           />
                         </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Things to carry (optional)</Label>
+                          <Input
+                            value={draft.thingsToCarry}
+                            onChange={(e) => updateDraft(i, { thingsToCarry: e.target.value.slice(0, 200) })}
+                            placeholder="e.g. Jacket, water bottle, ID proof"
+                            className="h-8"
+                          />
+                        </div>
+                        <TransportEditor
+                          value={draft.transportAvailability}
+                          onChange={(v) => updateDraft(i, { transportAvailability: v })}
+                        />
                         <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
                           <MapPin className="h-3 w-3" />
                           {s.pos[0].toFixed(4)}, {s.pos[1].toFixed(4)}
