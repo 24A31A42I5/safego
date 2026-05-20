@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,13 +9,23 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { PlaceSearch } from "@/components/PlaceSearch";
 import { SafetyMap, type MapMarker } from "@/components/SafetyMap";
 import { fetchRoute, formatDistance, formatDuration, type RouteResult } from "@/lib/routing";
-import { pointsBounds } from "@/lib/geo";
-import { ArrowRight, MapPin, MousePointerClick, Plus, Trash2, Upload } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+import { haversine, pointsBounds } from "@/lib/geo";
+import {
+  ArrowDown,
+  ArrowRight,
+  ArrowUp,
+  MapPin,
+  MousePointerClick,
+  Plus,
+  RouteIcon,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
 import { ShareTourDialog, type ShareTourPayload } from "@/components/ShareTourDialog";
 import { toast } from "sonner";
 
@@ -25,34 +35,28 @@ interface Props {
   onPublished?: () => void;
 }
 
-interface PointLabel { pos: [number, number]; label: string }
+interface Stop {
+  pos: [number, number];
+  label: string;
+}
 
 export function CreateTourPlanDialog({ open, onOpenChange, onPublished }: Props) {
-  const [start, setStart] = useState<PointLabel | null>(null);
-  const [dest, setDest] = useState<PointLabel | null>(null);
-  const [stops, setStops] = useState<PointLabel[]>([]);
+  const [stops, setStops] = useState<Stop[]>([]);
   const [clickToAdd, setClickToAdd] = useState(false);
   const [route, setRoute] = useState<RouteResult | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [panTo, setPanTo] = useState<[number, number] | null>(null);
 
-  // Reset when closed
   useEffect(() => {
     if (!open) {
-      setStart(null);
-      setDest(null);
       setStops([]);
       setClickToAdd(false);
       setRoute(null);
+      setPanTo(null);
     }
   }, [open]);
 
-  const waypoints = useMemo<[number, number][]>(() => {
-    const list: [number, number][] = [];
-    if (start) list.push(start.pos);
-    stops.forEach((s) => list.push(s.pos));
-    if (dest) list.push(dest.pos);
-    return list;
-  }, [start, dest, stops]);
+  const waypoints = useMemo(() => stops.map((s) => s.pos), [stops]);
 
   useEffect(() => {
     if (waypoints.length < 2) {
@@ -66,50 +70,90 @@ export function CreateTourPlanDialog({ open, onOpenChange, onPublished }: Props)
     return () => ctrl.abort();
   }, [waypoints]);
 
-  const markers: MapMarker[] = useMemo(() => {
-    const m: MapMarker[] = [];
-    if (start) m.push({ id: "start", pos: start.pos, label: `Start: ${start.label}`, color: "#16a34a", initials: "A" });
-    stops.forEach((s, i) =>
-      m.push({ id: `s-${i}`, pos: s.pos, label: s.label, color: "#0ea5e9", initials: `${i + 1}` }),
-    );
-    if (dest) m.push({ id: "dest", pos: dest.pos, label: `Destination: ${dest.label}`, color: "#dc2626", initials: "B" });
-    return m;
-  }, [start, dest, stops]);
+  const addStop = (pos: [number, number], label: string) => {
+    setStops((p) => [...p, { pos, label }]);
+    setPanTo(pos);
+  };
+  const removeStop = (i: number) => setStops((p) => p.filter((_, idx) => idx !== i));
+  const moveStop = (i: number, dir: -1 | 1) =>
+    setStops((p) => {
+      const next = [...p];
+      const j = i + dir;
+      if (j < 0 || j >= next.length) return p;
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
+
+  const onMapClick = useCallback(
+    (latlng: [number, number]) => {
+      if (!clickToAdd) return;
+      addStop(latlng, `Stop @ ${latlng[0].toFixed(3)}, ${latlng[1].toFixed(3)}`);
+    },
+    [clickToAdd],
+  );
+
+  const autoOrderStops = () => {
+    if (stops.length < 4) {
+      toast.info("Add at least two stops between start and destination");
+      return;
+    }
+    const start = stops[0];
+    const dest = stops[stops.length - 1];
+    const remaining = stops.slice(1, -1);
+    const ordered: Stop[] = [];
+    let current = start;
+    while (remaining.length) {
+      let bestIdx = 0;
+      let bestScore = Number.POSITIVE_INFINITY;
+      remaining.forEach((c, idx) => {
+        const s = haversine(current.pos, c.pos) + haversine(c.pos, dest.pos) * 0.35;
+        if (s < bestScore) {
+          bestScore = s;
+          bestIdx = idx;
+        }
+      });
+      const [next] = remaining.splice(bestIdx, 1);
+      ordered.push(next);
+      current = next;
+    }
+    setStops([start, ...ordered, dest]);
+    toast.success("Stops auto-ordered");
+  };
+
+  const clearAll = () => {
+    setStops([]);
+    setRoute(null);
+  };
+
+  const stopMarkers: MapMarker[] = useMemo(
+    () =>
+      stops.map((s, i) => ({
+        id: `wp-${i}`,
+        pos: s.pos,
+        label: `${i === 0 ? "Start" : i === stops.length - 1 ? "Destination" : `Stop ${i}`}: ${s.label}`,
+        color: i === 0 ? "#16a34a" : i === stops.length - 1 ? "#dc2626" : "#0ea5e9",
+        initials: i === 0 ? "A" : i === stops.length - 1 ? "B" : `${i}`,
+      })),
+    [stops],
+  );
 
   const bounds = useMemo(() => (waypoints.length ? pointsBounds(waypoints) : undefined), [waypoints]);
 
-  const handleMapClick = (latlng: [number, number]) => {
-    if (!clickToAdd) return;
-    if (!start) {
-      setStart({ pos: latlng, label: `Start @ ${latlng[0].toFixed(3)}, ${latlng[1].toFixed(3)}` });
-      toast.success("Start set — click again for destination");
-      return;
-    }
-    if (!dest) {
-      setDest({ pos: latlng, label: `Destination @ ${latlng[0].toFixed(3)}, ${latlng[1].toFixed(3)}` });
-      toast.success("Destination set — keep clicking to add stops");
-      return;
-    }
-    setStops((p) => [...p, { pos: latlng, label: `Stop @ ${latlng[0].toFixed(3)}, ${latlng[1].toFixed(3)}` }]);
-  };
-
-  const removeStop = (i: number) => setStops((p) => p.filter((_, idx) => idx !== i));
-
   const payload: ShareTourPayload | null = useMemo(() => {
-    if (!start || !dest || !route) return null;
+    if (stops.length < 2 || !route) return null;
     return {
-      start,
-      destination: dest,
-      intermediateStops: stops,
+      start: stops[0],
+      destination: stops[stops.length - 1],
+      intermediateStops: stops.slice(1, -1),
       routeCoordinates: route.coordinates,
       routeDistanceM: route.distance,
       routeDurationS: route.duration,
     };
-  }, [start, dest, stops, route]);
+  }, [stops, route]);
 
   const onContinue = () => {
-    if (!start || !dest) {
-      toast.error("Please set a start and destination");
+    if (stops.length < 2) {
+      toast.error("Add a start and destination");
       return;
     }
     if (!route) {
@@ -119,109 +163,156 @@ export function CreateTourPlanDialog({ open, onOpenChange, onPublished }: Props)
     setShareOpen(true);
   };
 
+  const searchPlaceholder =
+    stops.length === 0 ? "Start location" : stops.length === 1 ? "Destination" : "Add a stop";
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-h-[95vh] max-w-3xl overflow-y-auto p-0">
+        <DialogContent className="max-h-[95vh] max-w-5xl overflow-y-auto p-0">
           <DialogHeader className="border-b p-4">
             <DialogTitle className="flex items-center gap-2">
-              <Upload className="h-4 w-4" /> Upload your tour plan
+              <Upload className="h-4 w-4" /> Plan your journey
             </DialogTitle>
             <DialogDescription>
-              Set a start &amp; destination, add stops on the map, then publish to the community.
+              Build a complete multi-stop journey — search places, tap the map, reorder, and publish.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3 p-4">
-            <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+            {/* LEFT — planner controls */}
+            <div className="space-y-3">
               <div className="space-y-1">
-                <Label className="text-xs">Start location</Label>
+                <Label className="text-xs">
+                  {stops.length === 0
+                    ? "Search start location"
+                    : stops.length === 1
+                      ? "Search destination"
+                      : "Add another stop"}
+                </Label>
                 <PlaceSearch
-                  placeholder="From…"
-                  onSelect={(p) => setStart({ pos: [p.lat, p.lon], label: p.label })}
-                  initialValue={start?.label.split(",").slice(0, 2).join(", ") ?? ""}
+                  placeholder={searchPlaceholder}
+                  onSelect={(p) => addStop([p.lat, p.lon], p.label.split(",").slice(0, 2).join(", "))}
                 />
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Destination</Label>
-                <PlaceSearch
-                  placeholder="To…"
-                  onSelect={(p) => setDest({ pos: [p.lat, p.lon], label: p.label })}
-                  initialValue={dest?.label.split(",").slice(0, 2).join(", ") ?? ""}
-                />
-              </div>
-            </div>
 
-            <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-xs">
-              <div className="flex items-center gap-2">
-                <MousePointerClick className="h-4 w-4 text-primary" />
-                <span>Tap on map to add {!start ? "start" : !dest ? "destination" : "stops"}</span>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant={clickToAdd ? "default" : "outline"}
+                  onClick={() => setClickToAdd((v) => !v)}
+                >
+                  <MousePointerClick className="mr-1 h-4 w-4" />
+                  {clickToAdd ? "Click map (on)" : "Click map to add"}
+                </Button>
+                <Button size="sm" variant="outline" onClick={autoOrderStops} disabled={stops.length < 4}>
+                  <RouteIcon className="mr-1 h-4 w-4" /> Auto-order
+                </Button>
+                <Button size="sm" variant="outline" onClick={clearAll} disabled={stops.length === 0}>
+                  <Trash2 className="mr-1 h-4 w-4" /> Clear
+                </Button>
               </div>
-              <div className="flex items-center gap-2">
-                <Switch checked={clickToAdd} onCheckedChange={setClickToAdd} id="click-add" />
-                <Label htmlFor="click-add" className="text-xs">Click to add</Label>
-              </div>
-            </div>
 
-            <SafetyMap
-              markers={markers}
-              routePolyline={route?.coordinates ?? (waypoints.length >= 2 ? waypoints : null)}
-              fitBounds={bounds}
-              fitBoundsEnabled
-              height="320px"
-              onMapClick={handleMapClick}
-            />
+              {route && (
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <Badge variant="secondary">{formatDistance(route.distance)}</Badge>
+                  <Badge variant="secondary">{formatDuration(route.duration)}</Badge>
+                  <Badge variant="secondary">
+                    {Math.max(0, stops.length - 2)} stop{stops.length - 2 === 1 ? "" : "s"}
+                  </Badge>
+                </div>
+              )}
 
-            {(start || dest || stops.length > 0) && (
-              <div className="space-y-1">
-                <Label className="text-xs">Itinerary</Label>
-                <ol className="space-y-1 rounded-md border p-2">
-                  {start && (
-                    <li className="flex items-center gap-2 text-sm">
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-[10px] font-bold text-white">A</span>
-                      <span className="min-w-0 flex-1 truncate">{start.label}</span>
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setStart(null)} aria-label="Remove start">
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </li>
-                  )}
+              {stops.length > 0 ? (
+                <ul className="divide-y rounded-md border">
                   {stops.map((s, i) => (
-                    <li key={i} className="flex items-center gap-2 text-sm">
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sky-500 text-[10px] font-bold text-white">{i + 1}</span>
-                      <span className="min-w-0 flex-1 truncate">{s.label}</span>
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeStop(i)} aria-label="Remove stop">
-                        <Trash2 className="h-3 w-3" />
+                    <li key={i} className="flex items-center gap-2 p-2 text-sm">
+                      <span
+                        className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+                        style={{
+                          background:
+                            i === 0 ? "#16a34a" : i === stops.length - 1 ? "#dc2626" : "#0ea5e9",
+                        }}
+                      >
+                        {i === 0 ? "A" : i === stops.length - 1 ? "B" : i}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setPanTo(s.pos)}
+                        className="min-w-0 flex-1 truncate text-left hover:underline"
+                      >
+                        {s.label}
+                      </button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7"
+                        onClick={() => moveStop(i, -1)}
+                        disabled={i === 0}
+                        aria-label="Move up"
+                      >
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7"
+                        onClick={() => moveStop(i, 1)}
+                        disabled={i === stops.length - 1}
+                        aria-label="Move down"
+                      >
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-destructive"
+                        onClick={() => removeStop(i)}
+                        aria-label="Remove stop"
+                      >
+                        <X className="h-3.5 w-3.5" />
                       </Button>
                     </li>
                   ))}
-                  {dest && (
-                    <li className="flex items-center gap-2 text-sm">
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white">B</span>
-                      <span className="min-w-0 flex-1 truncate">{dest.label}</span>
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setDest(null)} aria-label="Remove destination">
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </li>
-                  )}
-                </ol>
-              </div>
-            )}
+                </ul>
+              ) : (
+                <p className="rounded-md border border-dashed p-3 text-center text-xs text-muted-foreground">
+                  <MapPin className="mr-1 inline h-3.5 w-3.5" />
+                  Search above or tap the map to add your start.
+                </p>
+              )}
 
-            {route && (
-              <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                <Badge variant="secondary">{formatDistance(route.distance)}</Badge>
-                <Badge variant="secondary">{formatDuration(route.duration)}</Badge>
-                <Badge variant="secondary">{stops.length} stop{stops.length === 1 ? "" : "s"}</Badge>
-              </div>
-            )}
+              <p className="text-[11px] text-muted-foreground">
+                Add per-stop details (photos, tips, cost, warnings) on the next step.
+              </p>
+            </div>
+
+            {/* RIGHT — map */}
+            <div className="space-y-2">
+              <SafetyMap
+                markers={stopMarkers}
+                routePolyline={route?.coordinates ?? (waypoints.length >= 2 ? waypoints : null)}
+                fitBounds={bounds}
+                fitBoundsEnabled={waypoints.length > 1 || Boolean(panTo)}
+                panTo={panTo}
+                onMapClick={onMapClick}
+                cursor={clickToAdd ? "crosshair" : undefined}
+                height="420px"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                {clickToAdd
+                  ? "Click anywhere on the map to drop a stop."
+                  : "Enable “Click map to add” to drop stops directly on the map."}
+              </p>
+            </div>
           </div>
 
           <DialogFooter className="sticky bottom-0 border-t bg-background/95 p-3 backdrop-blur">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={onContinue} disabled={!start || !dest || !route}>
-              Continue <ArrowRight className="ml-1 h-4 w-4" />
+            <Button onClick={onContinue} disabled={stops.length < 2 || !route}>
+              Add details & publish <ArrowRight className="ml-1 h-4 w-4" />
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -231,11 +322,7 @@ export function CreateTourPlanDialog({ open, onOpenChange, onPublished }: Props)
         open={shareOpen}
         onOpenChange={(v) => {
           setShareOpen(v);
-          if (!v) {
-            // If user successfully published, ShareTourDialog already toasts.
-            // Close the planner too when share dialog closes after publish.
-            onPublished?.();
-          }
+          if (!v) onPublished?.();
         }}
         payload={payload}
       />
