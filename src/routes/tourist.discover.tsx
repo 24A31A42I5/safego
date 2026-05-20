@@ -38,6 +38,8 @@ export const Route = createFileRoute("/tourist/discover")({
   }),
 });
 
+import { TRANSPORT_OPTIONS, type TransportOption } from "@/lib/tour-stop";
+
 interface Stop {
   name: string;
   lat: number;
@@ -51,6 +53,8 @@ interface Stop {
   travelTips?: string;
   warnings?: string;
   estimatedCost?: string;
+  thingsToCarry?: string;
+  transportAvailability?: TransportOption[];
 }
 interface SharedTourRow {
   id: string;
