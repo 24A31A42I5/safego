@@ -937,6 +937,20 @@ function GroupDetail() {
   );
 }
 
+function stopHasRichDetails(s: Stop): boolean {
+  return Boolean(
+    s.detailedDescription ||
+      (s.images && s.images.length) ||
+      s.stayDuration ||
+      s.bestTimeToVisit ||
+      s.travelTips ||
+      s.warnings ||
+      s.estimatedCost ||
+      s.thingsToCarry ||
+      (s.transportAvailability && s.transportAvailability.length)
+  );
+}
+
 // Sample N evenly spaced points along a polyline
 function sampleAlong(line: [number, number][], n: number): [number, number][] {
   if (line.length <= n) return line;
