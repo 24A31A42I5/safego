@@ -745,6 +745,125 @@ function GroupDetail() {
         </CardContent>
       </Card>
 
+      {stops.some(stopHasRichDetails) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <RouteIcon className="h-5 w-5 text-primary" /> Journey timeline
+            </CardTitle>
+            <CardDescription>
+              Detailed stop-by-stop itinerary imported from the community plan.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ol className="relative space-y-3 border-l-2 border-dashed border-muted pl-5">
+              {stops.map((s, i) => {
+                const isStart = i === 0;
+                const isEnd = i === stops.length - 1;
+                const badge = isStart ? "A" : isEnd ? "B" : `${i}`;
+                const badgeColor = isStart
+                  ? "bg-emerald-600"
+                  : isEnd
+                    ? "bg-red-600"
+                    : "bg-sky-500";
+                return (
+                  <li key={i} className="relative">
+                    <span
+                      className={`absolute -left-[26px] flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white ${badgeColor}`}
+                    >
+                      {badge}
+                    </span>
+                    <div className="rounded-md border bg-card p-2.5">
+                      <div className="text-sm font-semibold">
+                        {isStart ? "Start · " : isEnd ? "Destination · " : ""}
+                        {s.label}
+                      </div>
+                      {s.detailedDescription && (
+                        <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">
+                          {s.detailedDescription}
+                        </p>
+                      )}
+                      {Array.isArray(s.images) && s.images.length > 0 && (
+                        <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1">
+                          {s.images.map((src, idx) => (
+                            <img
+                              key={idx}
+                              src={src}
+                              alt={`${s.label} ${idx + 1}`}
+                              loading="lazy"
+                              className="h-20 w-28 shrink-0 rounded object-cover"
+                            />
+                          ))}
+                        </div>
+                      )}
+                      {(s.stayDuration || s.bestTimeToVisit || s.estimatedCost) && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {s.stayDuration && (
+                            <Badge variant="secondary" className="gap-1 text-[10px]">
+                              <Clock className="h-3 w-3" />
+                              {s.stayDuration}
+                            </Badge>
+                          )}
+                          {s.bestTimeToVisit && (
+                            <Badge variant="secondary" className="text-[10px]">
+                              🗓 {s.bestTimeToVisit}
+                            </Badge>
+                          )}
+                          {s.estimatedCost && (
+                            <Badge variant="secondary" className="text-[10px]">
+                              💰 {s.estimatedCost}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                      {s.travelTips && (
+                        <div className="mt-2 rounded border-l-2 border-primary/60 bg-primary/5 px-2 py-1 text-[11px]">
+                          💡 {s.travelTips}
+                        </div>
+                      )}
+                      {s.warnings && (
+                        <div className="mt-1.5 rounded border-l-2 border-amber-500 bg-amber-500/10 px-2 py-1 text-[11px]">
+                          ⚠️ {s.warnings}
+                        </div>
+                      )}
+                      {s.thingsToCarry && (
+                        <div className="mt-1.5 rounded border-l-2 border-emerald-500 bg-emerald-500/10 px-2 py-1 text-[11px]">
+                          🎒 {s.thingsToCarry}
+                        </div>
+                      )}
+                      {Array.isArray(s.transportAvailability) && s.transportAvailability.length > 0 && (
+                        <div className="mt-2 space-y-1.5 rounded-md border bg-muted/40 p-2">
+                          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            Transport availability
+                          </div>
+                          {s.transportAvailability.map((t) => {
+                            const meta = TRANSPORT_OPTIONS.find((o) => o.type === t.type);
+                            return (
+                              <div key={t.type} className="text-[11px]">
+                                <div className="font-medium">
+                                  {meta?.icon} {meta?.label}
+                                </div>
+                                {t.details && (
+                                  <p className="whitespace-pre-wrap text-muted-foreground">
+                                    {t.details}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          </CardContent>
+        </Card>
+      )}
+
+
+
       {suggestions.length > 0 && (
         <Card>
           <CardHeader>
