@@ -23,7 +23,9 @@ import {
   Lock,
   Navigation,
   RouteIcon,
+  Clock,
 } from "lucide-react";
+import { TRANSPORT_OPTIONS, type TransportOption } from "@/lib/tour-stop";
 import { fetchRoute, formatDistance, formatDuration, type RouteResult } from "@/lib/routing";
 import type { SuggestedPOI } from "@/lib/nominatim";
 import { haversine, pointsBounds } from "@/lib/geo";
@@ -72,6 +74,15 @@ interface MemberProfile {
 interface Stop {
   pos: [number, number];
   label: string;
+  detailedDescription?: string;
+  images?: string[];
+  stayDuration?: string;
+  bestTimeToVisit?: string;
+  travelTips?: string;
+  warnings?: string;
+  estimatedCost?: string;
+  thingsToCarry?: string;
+  transportAvailability?: TransportOption[];
 }
 
 const COLORS = ["#3b82f6", "#ec4899", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#06b6d4", "#84cc16"];
@@ -117,8 +128,20 @@ function GroupDetail() {
         if (Array.isArray(w) && w.length === 2) {
           return { pos: [w[0] as number, w[1] as number], label: `Stop ${i + 1}` };
         }
-        const o = w as { pos?: [number, number]; label?: string };
-        return { pos: o.pos ?? [0, 0], label: o.label ?? `Stop ${i + 1}` };
+        const o = w as Partial<Stop>;
+        return {
+          pos: o.pos ?? [0, 0],
+          label: o.label ?? `Stop ${i + 1}`,
+          detailedDescription: o.detailedDescription,
+          images: o.images,
+          stayDuration: o.stayDuration,
+          bestTimeToVisit: o.bestTimeToVisit,
+          travelTips: o.travelTips,
+          warnings: o.warnings,
+          estimatedCost: o.estimatedCost,
+          thingsToCarry: o.thingsToCarry,
+          transportAvailability: o.transportAvailability,
+        };
       });
       setStops(parsed);
 
@@ -160,18 +183,51 @@ function GroupDetail() {
         navigate({ search: { applyTour: undefined }, replace: true });
         return;
       }
-      const sortedStops = [...(data.stops as { name: string; lat: number; lng: number; order: number }[])]
-        .sort((a, b) => a.order - b.order);
+      type SharedStop = {
+        name: string;
+        lat: number;
+        lng: number;
+        order: number;
+        detailedDescription?: string;
+        description?: string;
+        images?: string[];
+        stayDuration?: string;
+        bestTimeToVisit?: string;
+        travelTips?: string;
+        warnings?: string;
+        estimatedCost?: string;
+        thingsToCarry?: string;
+        transportAvailability?: TransportOption[];
+      };
+      const sortedStops = [...(data.stops as unknown as SharedStop[])].sort((a, b) => a.order - b.order);
       const next: Stop[] = [
         { pos: [data.start_lat, data.start_lng], label: data.start_label },
-        ...sortedStops.map((s) => ({ pos: [s.lat, s.lng] as [number, number], label: s.name })),
+        ...sortedStops.map((s) => ({
+          pos: [s.lat, s.lng] as [number, number],
+          label: s.name,
+          detailedDescription: s.detailedDescription ?? s.description,
+          images: s.images,
+          stayDuration: s.stayDuration,
+          bestTimeToVisit: s.bestTimeToVisit,
+          travelTips: s.travelTips,
+          warnings: s.warnings,
+          estimatedCost: s.estimatedCost,
+          thingsToCarry: s.thingsToCarry,
+          transportAvailability: s.transportAvailability,
+        })),
         { pos: [data.dest_lat, data.dest_lng], label: data.dest_label },
       ];
       setStops(next);
-      toast.success("Plan loaded — edit freely");
+      // Persist immediately so the rich plan survives a refresh.
+      void supabase
+        .from("tour_groups")
+        .update({ name: data.title ?? undefined, waypoints: next as unknown as never })
+        .eq("id", groupId);
+      toast.success(`Loaded "${data.title}" with ${sortedStops.length} stop${sortedStops.length === 1 ? "" : "s"}`);
       navigate({ search: { applyTour: undefined }, replace: true });
     })();
-  }, [applyTour, isTourStarted, navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applyTour, isTourStarted, navigate, groupId]);
 
   // Realtime subscription only when tour is live — keeps planning mode static.
   useEffect(() => {
@@ -689,6 +745,125 @@ function GroupDetail() {
         </CardContent>
       </Card>
 
+      {stops.some(stopHasRichDetails) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <RouteIcon className="h-5 w-5 text-primary" /> Journey timeline
+            </CardTitle>
+            <CardDescription>
+              Detailed stop-by-stop itinerary imported from the community plan.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ol className="relative space-y-3 border-l-2 border-dashed border-muted pl-5">
+              {stops.map((s, i) => {
+                const isStart = i === 0;
+                const isEnd = i === stops.length - 1;
+                const badge = isStart ? "A" : isEnd ? "B" : `${i}`;
+                const badgeColor = isStart
+                  ? "bg-emerald-600"
+                  : isEnd
+                    ? "bg-red-600"
+                    : "bg-sky-500";
+                return (
+                  <li key={i} className="relative">
+                    <span
+                      className={`absolute -left-[26px] flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white ${badgeColor}`}
+                    >
+                      {badge}
+                    </span>
+                    <div className="rounded-md border bg-card p-2.5">
+                      <div className="text-sm font-semibold">
+                        {isStart ? "Start · " : isEnd ? "Destination · " : ""}
+                        {s.label}
+                      </div>
+                      {s.detailedDescription && (
+                        <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">
+                          {s.detailedDescription}
+                        </p>
+                      )}
+                      {Array.isArray(s.images) && s.images.length > 0 && (
+                        <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1">
+                          {s.images.map((src, idx) => (
+                            <img
+                              key={idx}
+                              src={src}
+                              alt={`${s.label} ${idx + 1}`}
+                              loading="lazy"
+                              className="h-20 w-28 shrink-0 rounded object-cover"
+                            />
+                          ))}
+                        </div>
+                      )}
+                      {(s.stayDuration || s.bestTimeToVisit || s.estimatedCost) && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {s.stayDuration && (
+                            <Badge variant="secondary" className="gap-1 text-[10px]">
+                              <Clock className="h-3 w-3" />
+                              {s.stayDuration}
+                            </Badge>
+                          )}
+                          {s.bestTimeToVisit && (
+                            <Badge variant="secondary" className="text-[10px]">
+                              🗓 {s.bestTimeToVisit}
+                            </Badge>
+                          )}
+                          {s.estimatedCost && (
+                            <Badge variant="secondary" className="text-[10px]">
+                              💰 {s.estimatedCost}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                      {s.travelTips && (
+                        <div className="mt-2 rounded border-l-2 border-primary/60 bg-primary/5 px-2 py-1 text-[11px]">
+                          💡 {s.travelTips}
+                        </div>
+                      )}
+                      {s.warnings && (
+                        <div className="mt-1.5 rounded border-l-2 border-amber-500 bg-amber-500/10 px-2 py-1 text-[11px]">
+                          ⚠️ {s.warnings}
+                        </div>
+                      )}
+                      {s.thingsToCarry && (
+                        <div className="mt-1.5 rounded border-l-2 border-emerald-500 bg-emerald-500/10 px-2 py-1 text-[11px]">
+                          🎒 {s.thingsToCarry}
+                        </div>
+                      )}
+                      {Array.isArray(s.transportAvailability) && s.transportAvailability.length > 0 && (
+                        <div className="mt-2 space-y-1.5 rounded-md border bg-muted/40 p-2">
+                          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            Transport availability
+                          </div>
+                          {s.transportAvailability.map((t) => {
+                            const meta = TRANSPORT_OPTIONS.find((o) => o.type === t.type);
+                            return (
+                              <div key={t.type} className="text-[11px]">
+                                <div className="font-medium">
+                                  {meta?.icon} {meta?.label}
+                                </div>
+                                {t.details && (
+                                  <p className="whitespace-pre-wrap text-muted-foreground">
+                                    {t.details}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          </CardContent>
+        </Card>
+      )}
+
+
+
       {suggestions.length > 0 && (
         <Card>
           <CardHeader>
@@ -759,6 +934,20 @@ function GroupDetail() {
         }
       />
     </div>
+  );
+}
+
+function stopHasRichDetails(s: Stop): boolean {
+  return Boolean(
+    s.detailedDescription ||
+      (s.images && s.images.length) ||
+      s.stayDuration ||
+      s.bestTimeToVisit ||
+      s.travelTips ||
+      s.warnings ||
+      s.estimatedCost ||
+      s.thingsToCarry ||
+      (s.transportAvailability && s.transportAvailability.length)
   );
 }
 

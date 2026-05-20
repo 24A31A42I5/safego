@@ -12,7 +12,14 @@ import { toast } from "sonner";
 import { encodePolyline, downsamplePolyline } from "@/lib/polyline";
 import { Share2, MapPin } from "lucide-react";
 import { TourPhotoUpload } from "@/components/TourPhotoUpload";
-import { type RichStop, type StopDraft, emptyStopDraft } from "@/lib/tour-stop";
+import {
+  type RichStop,
+  type StopDraft,
+  type TransportOption,
+  type TransportType,
+  TRANSPORT_OPTIONS,
+  emptyStopDraft,
+} from "@/lib/tour-stop";
 
 export interface ShareTourPayload {
   start: { pos: [number, number]; label: string };
@@ -87,6 +94,8 @@ export function ShareTourDialog({ open, onOpenChange, payload }: Props) {
           travelTips: d.travelTips.trim() || undefined,
           warnings: d.warnings.trim() || undefined,
           estimatedCost: d.estimatedCost.trim() || undefined,
+          thingsToCarry: d.thingsToCarry.trim() || undefined,
+          transportAvailability: d.transportAvailability.length ? d.transportAvailability : undefined,
         };
       });
       const { error } = await supabase.from("shared_tours").insert({
@@ -278,6 +287,19 @@ export function ShareTourDialog({ open, onOpenChange, payload }: Props) {
                             className="h-8"
                           />
                         </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Things to carry (optional)</Label>
+                          <Input
+                            value={draft.thingsToCarry}
+                            onChange={(e) => updateDraft(i, { thingsToCarry: e.target.value.slice(0, 200) })}
+                            placeholder="e.g. Jacket, water bottle, ID proof"
+                            className="h-8"
+                          />
+                        </div>
+                        <TransportEditor
+                          value={draft.transportAvailability}
+                          onChange={(v) => updateDraft(i, { transportAvailability: v })}
+                        />
                         <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
                           <MapPin className="h-3 w-3" />
                           {s.pos[0].toFixed(4)}, {s.pos[1].toFixed(4)}
@@ -316,3 +338,69 @@ export function ShareTourDialog({ open, onOpenChange, payload }: Props) {
     </Dialog>
   );
 }
+
+function TransportEditor({
+  value,
+  onChange,
+}: {
+  value: TransportOption[];
+  onChange: (v: TransportOption[]) => void;
+}) {
+  const byType = new Map(value.map((o) => [o.type, o]));
+  const toggle = (type: TransportType) => {
+    if (byType.has(type)) {
+      onChange(value.filter((o) => o.type !== type));
+    } else {
+      onChange([...value, { type, details: "" }]);
+    }
+  };
+  const updateDetails = (type: TransportType, details: string) => {
+    onChange(value.map((o) => (o.type === type ? { ...o, details } : o)));
+  };
+  return (
+    <div className="space-y-2 rounded-md border bg-muted/30 p-2">
+      <Label className="text-xs">Transport availability</Label>
+      <div className="flex flex-wrap gap-1.5">
+        {TRANSPORT_OPTIONS.map((opt) => {
+          const on = byType.has(opt.type);
+          return (
+            <button key={opt.type} type="button" onClick={() => toggle(opt.type)}>
+              <Badge variant={on ? "default" : "outline"} className="cursor-pointer">
+                <span className="mr-1">{opt.icon}</span>
+                {opt.label}
+              </Badge>
+            </button>
+          );
+        })}
+      </div>
+      {value.length > 0 && (
+        <div className="space-y-2">
+          {value.map((opt) => {
+            const meta = TRANSPORT_OPTIONS.find((t) => t.type === opt.type);
+            return (
+              <div key={opt.type} className="space-y-1">
+                <Label className="text-[11px] text-muted-foreground">
+                  {meta?.icon} {meta?.label} details
+                </Label>
+                <Textarea
+                  value={opt.details}
+                  onChange={(e) => updateDetails(opt.type, e.target.value.slice(0, 400))}
+                  placeholder={
+                    opt.type === "bus"
+                      ? "e.g. APSRTC buses every 30 mins, fare ₹250"
+                      : opt.type === "train"
+                        ? "e.g. Nearest station: Araku Railway Station"
+                        : "How to use this option to reach the place"
+                  }
+                  rows={2}
+                  className="text-xs"
+                />
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
