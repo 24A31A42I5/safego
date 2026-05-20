@@ -23,7 +23,9 @@ import {
   Lock,
   Navigation,
   RouteIcon,
+  Clock,
 } from "lucide-react";
+import { TRANSPORT_OPTIONS, type TransportOption } from "@/lib/tour-stop";
 import { fetchRoute, formatDistance, formatDuration, type RouteResult } from "@/lib/routing";
 import type { SuggestedPOI } from "@/lib/nominatim";
 import { haversine, pointsBounds } from "@/lib/geo";
