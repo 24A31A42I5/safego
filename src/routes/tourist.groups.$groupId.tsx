@@ -74,6 +74,15 @@ interface MemberProfile {
 interface Stop {
   pos: [number, number];
   label: string;
+  detailedDescription?: string;
+  images?: string[];
+  stayDuration?: string;
+  bestTimeToVisit?: string;
+  travelTips?: string;
+  warnings?: string;
+  estimatedCost?: string;
+  thingsToCarry?: string;
+  transportAvailability?: TransportOption[];
 }
 
 const COLORS = ["#3b82f6", "#ec4899", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#06b6d4", "#84cc16"];
