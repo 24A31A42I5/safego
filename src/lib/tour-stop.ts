@@ -1,5 +1,23 @@
-// Rich shape for a single stop in a shared tour. All extra fields are optional
-// so existing rows (which only have name/lat/lng/order/description) keep working.
+// Rich shape for a single stop in a shared tour / group tour. All extra
+// fields are optional so existing rows keep working.
+
+export type TransportType = "bus" | "train" | "car" | "flight" | "bike" | "walk" | "other";
+
+export interface TransportOption {
+  type: TransportType;
+  details: string;
+}
+
+export const TRANSPORT_OPTIONS: { type: TransportType; label: string; icon: string }[] = [
+  { type: "bus", label: "Bus", icon: "🚌" },
+  { type: "train", label: "Train", icon: "🚆" },
+  { type: "car", label: "Car", icon: "🚗" },
+  { type: "flight", label: "Flight", icon: "✈️" },
+  { type: "bike", label: "Bike", icon: "🚲" },
+  { type: "walk", label: "Walk", icon: "🚶" },
+  { type: "other", label: "Other", icon: "📦" },
+];
+
 export interface RichStop {
   name: string;
   lat: number;
@@ -8,11 +26,13 @@ export interface RichStop {
   description?: string;          // short description (legacy)
   detailedDescription?: string;  // long-form notes
   images?: string[];             // per-stop photos
-  stayDuration?: string;         // e.g. "2 hours", "half day"
-  bestTimeToVisit?: string;      // e.g. "Winter mornings"
+  stayDuration?: string;
+  bestTimeToVisit?: string;
   travelTips?: string;
   warnings?: string;
-  estimatedCost?: string;        // free-form so users can write "₹500" or "Free"
+  estimatedCost?: string;
+  thingsToCarry?: string;
+  transportAvailability?: TransportOption[];
   tags?: string[];
 }
 
@@ -25,6 +45,8 @@ export interface StopDraft {
   travelTips: string;
   warnings: string;
   estimatedCost: string;
+  thingsToCarry: string;
+  transportAvailability: TransportOption[];
 }
 
 export const emptyStopDraft = (name = ""): StopDraft => ({
@@ -36,4 +58,6 @@ export const emptyStopDraft = (name = ""): StopDraft => ({
   travelTips: "",
   warnings: "",
   estimatedCost: "",
+  thingsToCarry: "",
+  transportAvailability: [],
 });
