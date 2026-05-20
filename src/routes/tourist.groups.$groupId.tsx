@@ -183,18 +183,51 @@ function GroupDetail() {
         navigate({ search: { applyTour: undefined }, replace: true });
         return;
       }
-      const sortedStops = [...(data.stops as { name: string; lat: number; lng: number; order: number }[])]
-        .sort((a, b) => a.order - b.order);
+      type SharedStop = {
+        name: string;
+        lat: number;
+        lng: number;
+        order: number;
+        detailedDescription?: string;
+        description?: string;
+        images?: string[];
+        stayDuration?: string;
+        bestTimeToVisit?: string;
+        travelTips?: string;
+        warnings?: string;
+        estimatedCost?: string;
+        thingsToCarry?: string;
+        transportAvailability?: TransportOption[];
+      };
+      const sortedStops = [...(data.stops as SharedStop[])].sort((a, b) => a.order - b.order);
       const next: Stop[] = [
         { pos: [data.start_lat, data.start_lng], label: data.start_label },
-        ...sortedStops.map((s) => ({ pos: [s.lat, s.lng] as [number, number], label: s.name })),
+        ...sortedStops.map((s) => ({
+          pos: [s.lat, s.lng] as [number, number],
+          label: s.name,
+          detailedDescription: s.detailedDescription ?? s.description,
+          images: s.images,
+          stayDuration: s.stayDuration,
+          bestTimeToVisit: s.bestTimeToVisit,
+          travelTips: s.travelTips,
+          warnings: s.warnings,
+          estimatedCost: s.estimatedCost,
+          thingsToCarry: s.thingsToCarry,
+          transportAvailability: s.transportAvailability,
+        })),
         { pos: [data.dest_lat, data.dest_lng], label: data.dest_label },
       ];
       setStops(next);
-      toast.success("Plan loaded — edit freely");
+      // Persist immediately so the rich plan survives a refresh.
+      void supabase
+        .from("tour_groups")
+        .update({ name: data.title ?? undefined, waypoints: next as unknown as never })
+        .eq("id", groupId);
+      toast.success(`Loaded "${data.title}" with ${sortedStops.length} stop${sortedStops.length === 1 ? "" : "s"}`);
       navigate({ search: { applyTour: undefined }, replace: true });
     })();
-  }, [applyTour, isTourStarted, navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applyTour, isTourStarted, navigate, groupId]);
 
   // Realtime subscription only when tour is live — keeps planning mode static.
   useEffect(() => {
