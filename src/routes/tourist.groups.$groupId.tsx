@@ -128,8 +128,20 @@ function GroupDetail() {
         if (Array.isArray(w) && w.length === 2) {
           return { pos: [w[0] as number, w[1] as number], label: `Stop ${i + 1}` };
         }
-        const o = w as { pos?: [number, number]; label?: string };
-        return { pos: o.pos ?? [0, 0], label: o.label ?? `Stop ${i + 1}` };
+        const o = w as Partial<Stop>;
+        return {
+          pos: o.pos ?? [0, 0],
+          label: o.label ?? `Stop ${i + 1}`,
+          detailedDescription: o.detailedDescription,
+          images: o.images,
+          stayDuration: o.stayDuration,
+          bestTimeToVisit: o.bestTimeToVisit,
+          travelTips: o.travelTips,
+          warnings: o.warnings,
+          estimatedCost: o.estimatedCost,
+          thingsToCarry: o.thingsToCarry,
+          transportAvailability: o.transportAvailability,
+        };
       });
       setStops(parsed);
 
