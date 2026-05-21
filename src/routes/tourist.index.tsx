@@ -153,7 +153,10 @@ function TouristDashboard() {
     fetchRoute([location, routeTo], "walking", ctrl.signal)
       .then((r) => {
         if (r) setRoute(r);
-        else toast.error("Could not calculate route — showing direct path", { id: "route-fallback" });
+        else {
+          setRoute(null);
+          toast.error("Could not calculate road route. No route will be drawn.", { id: "route-fallback" });
+        }
       })
       .catch(() => {});
     return () => ctrl.abort();
@@ -179,9 +182,6 @@ function TouristDashboard() {
   };
 
   const distanceToSafety = location && routeTo ? Math.round(haversine(location, routeTo)) : null;
-  const fallbackPolyline: [number, number][] | null =
-    location && routeTo && !route ? [location, routeTo] : null;
-
   return (
     <div className="space-y-4">
       <Card>
@@ -256,7 +256,7 @@ function TouristDashboard() {
             userLocation={location}
             height="400px"
             panTo={panTo}
-            routePolyline={route?.coordinates ?? fallbackPolyline}
+            routePolyline={route?.coordinates ?? null}
             markers={
               routeTo ? [{ id: "safety", pos: routeTo, label: "Nearest safe zone", color: "#16a34a" }] : []
             }

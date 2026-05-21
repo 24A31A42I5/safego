@@ -25,10 +25,11 @@ import {
   RouteIcon,
   Clock,
 } from "lucide-react";
-import { TRANSPORT_OPTIONS, type TransportOption } from "@/lib/tour-stop";
 import { fetchRoute, formatDistance, formatDuration, type RouteResult } from "@/lib/routing";
 import type { SuggestedPOI } from "@/lib/nominatim";
 import { haversine, pointsBounds } from "@/lib/geo";
+import { decodePolyline, downsamplePolyline, encodePolyline } from "@/lib/polyline";
+import { TRANSPORT_OPTIONS, parseGroupJourneyStop, richStopToGroupStop, type GroupJourneyStop, type RichStop } from "@/lib/tour-stop";
 
 import { ShareTourDialog, type ShareTourPayload } from "@/components/ShareTourDialog";
 import { Share2 } from "lucide-react";
@@ -57,6 +58,15 @@ interface GroupRow {
   invite_code: string;
   creator_id: string;
   waypoints: unknown;
+  description: string | null;
+  cover_image: string | null;
+  images: string[];
+  route_polyline: string | null;
+  route_distance_m: number;
+  route_duration_s: number;
+  tips: string | null;
+  tags: string[];
+  source_shared_tour_id: string | null;
 }
 
 interface MemberLoc {
@@ -71,21 +81,22 @@ interface MemberProfile {
   full_name: string;
 }
 
-interface Stop {
-  pos: [number, number];
-  label: string;
-  detailedDescription?: string;
-  images?: string[];
-  stayDuration?: string;
-  bestTimeToVisit?: string;
-  travelTips?: string;
-  warnings?: string;
-  estimatedCost?: string;
-  thingsToCarry?: string;
-  transportAvailability?: TransportOption[];
-}
+type Stop = GroupJourneyStop;
 
 const COLORS = ["#3b82f6", "#ec4899", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#06b6d4", "#84cc16"];
+
+const makeStop = (pos: [number, number], label: string, order: number): Stop => ({
+  id: `stop-${order}-${pos[0].toFixed(5)}-${pos[1].toFixed(5)}`,
+  order,
+  name: label,
+  label,
+  lat: pos[0],
+  lng: pos[1],
+  pos,
+  images: [],
+  tags: [],
+  transportAvailability: [],
+});
 
 function GroupDetail() {
   const { groupId } = Route.useParams();
@@ -95,6 +106,7 @@ function GroupDetail() {
   const [locations, setLocations] = useState<MemberLoc[]>([]);
   const [stops, setStops] = useState<Stop[]>([]);
   const [route, setRoute] = useState<RouteResult | null>(null);
+  const [routeLockedToStored, setRouteLockedToStored] = useState(false);
   const [suggestions, setSuggestions] = useState<SuggestedPOI[]>([]);
   const [aiBusy, setAiBusy] = useState(false);
   const [clickToAdd, setClickToAdd] = useState(false);
@@ -123,27 +135,16 @@ function GroupDetail() {
       }
       setGroup(g);
       const wp = Array.isArray(g.waypoints) ? (g.waypoints as unknown[]) : [];
-      // Support both legacy [lat,lng] and new {pos,label}
-      const parsed: Stop[] = wp.map((w, i) => {
-        if (Array.isArray(w) && w.length === 2) {
-          return { pos: [w[0] as number, w[1] as number], label: `Stop ${i + 1}` };
-        }
-        const o = w as Partial<Stop>;
-        return {
-          pos: o.pos ?? [0, 0],
-          label: o.label ?? `Stop ${i + 1}`,
-          detailedDescription: o.detailedDescription,
-          images: o.images,
-          stayDuration: o.stayDuration,
-          bestTimeToVisit: o.bestTimeToVisit,
-          travelTips: o.travelTips,
-          warnings: o.warnings,
-          estimatedCost: o.estimatedCost,
-          thingsToCarry: o.thingsToCarry,
-          transportAvailability: o.transportAvailability,
-        };
-      });
+      const parsed: Stop[] = wp.map((w, i) => parseGroupJourneyStop(w, i));
       setStops(parsed);
+      if (g.route_polyline) {
+        const coordinates = decodePolyline(g.route_polyline);
+        setRoute({ coordinates, distance: g.route_distance_m ?? 0, duration: g.route_duration_s ?? 0 });
+        setRouteLockedToStored(coordinates.length > 1);
+      } else {
+        setRoute(null);
+        setRouteLockedToStored(false);
+      }
 
       const { data: ms } = await supabase
         .from("tour_group_members")
@@ -183,45 +184,36 @@ function GroupDetail() {
         navigate({ search: { applyTour: undefined }, replace: true });
         return;
       }
-      type SharedStop = {
-        name: string;
-        lat: number;
-        lng: number;
-        order: number;
-        detailedDescription?: string;
-        description?: string;
-        images?: string[];
-        stayDuration?: string;
-        bestTimeToVisit?: string;
-        travelTips?: string;
-        warnings?: string;
-        estimatedCost?: string;
-        thingsToCarry?: string;
-        transportAvailability?: TransportOption[];
-      };
-      const sortedStops = [...(data.stops as unknown as SharedStop[])].sort((a, b) => a.order - b.order);
+      const sortedStops = [...(data.stops as unknown as RichStop[])].sort((a, b) => a.order - b.order);
       const next: Stop[] = [
-        { pos: [data.start_lat, data.start_lng], label: data.start_label },
-        ...sortedStops.map((s) => ({
-          pos: [s.lat, s.lng] as [number, number],
-          label: s.name,
-          detailedDescription: s.detailedDescription ?? s.description,
-          images: s.images,
-          stayDuration: s.stayDuration,
-          bestTimeToVisit: s.bestTimeToVisit,
-          travelTips: s.travelTips,
-          warnings: s.warnings,
-          estimatedCost: s.estimatedCost,
-          thingsToCarry: s.thingsToCarry,
-          transportAvailability: s.transportAvailability,
-        })),
-        { pos: [data.dest_lat, data.dest_lng], label: data.dest_label },
+        makeStop([data.start_lat, data.start_lng], data.start_label, 0),
+        ...sortedStops.map((s, i) => richStopToGroupStop(s, i + 1)),
+        makeStop([data.dest_lat, data.dest_lng], data.dest_label, sortedStops.length + 1),
       ];
+      const routeCoordinates = data.route_polyline ? decodePolyline(data.route_polyline) : [];
       setStops(next);
+      setRoute(
+        routeCoordinates.length > 1
+          ? { coordinates: routeCoordinates, distance: data.route_distance_m ?? 0, duration: data.route_duration_s ?? 0 }
+          : null,
+      );
+      setRouteLockedToStored(routeCoordinates.length > 1);
       // Persist immediately so the rich plan survives a refresh.
       void supabase
         .from("tour_groups")
-        .update({ name: data.title ?? undefined, waypoints: next as unknown as never })
+        .update({
+          name: data.title ?? undefined,
+          description: data.description,
+          cover_image: Array.isArray(data.images) && data.images.length > 0 ? data.images[0] : null,
+          images: data.images ?? [],
+          route_polyline: data.route_polyline,
+          route_distance_m: data.route_distance_m ?? 0,
+          route_duration_s: data.route_duration_s ?? 0,
+          tips: data.tips,
+          tags: data.tags ?? [],
+          source_shared_tour_id: data.id,
+          waypoints: next as unknown as never,
+        })
         .eq("id", groupId);
       toast.success(`Loaded "${data.title}" with ${sortedStops.length} stop${sortedStops.length === 1 ? "" : "s"}`);
       navigate({ search: { applyTour: undefined }, replace: true });
@@ -291,14 +283,18 @@ function GroupDetail() {
   useEffect(() => {
     if (waypoints.length < 2) {
       setRoute(null);
+      setRouteLockedToStored(false);
       return;
     }
+    if (routeLockedToStored) return;
+    setRoute(null);
     const ctrl = new AbortController();
     fetchRoute(waypoints, "driving", ctrl.signal).then((r) => {
       if (r) setRoute(r);
+      else setRoute(null);
     });
     return () => ctrl.abort();
-  }, [waypoints]);
+  }, [routeLockedToStored, waypoints]);
 
   // Distance-based separation alerts
   useEffect(() => {
@@ -345,16 +341,19 @@ function GroupDetail() {
   // ---- Stop management ----
   const addStop = (pos: [number, number], label: string) => {
     if (isTourStarted) return toast.error("End the live tour before editing the route");
-    setStops((prev) => [...prev, { pos, label }]);
+    setRouteLockedToStored(false);
+    setStops((prev) => [...prev, makeStop(pos, label, prev.length)]);
     setPanToStop(pos);
   };
   const removeStop = (idx: number) => {
     if (isTourStarted) return toast.error("Route editing is locked in Live Mode");
+    setRouteLockedToStored(false);
     setStops((prev) => prev.filter((_, i) => i !== idx));
   };
   const moveStop = (idx: number, dir: -1 | 1) =>
     setStops((prev) => {
       if (isTourStarted) return prev;
+      setRouteLockedToStored(false);
       const next = [...prev];
       const j = idx + dir;
       if (j < 0 || j >= next.length) return prev;
@@ -368,7 +367,8 @@ function GroupDetail() {
 
   const addSuggestionToRoute = (place: SuggestedPOI) => {
     if (isTourStarted) return toast.error("End the live tour before editing the route");
-    const stop = { pos: [place.lat, place.lon] as [number, number], label: place.name };
+    const stop = makeStop([place.lat, place.lon], place.name, stops.length);
+    setRouteLockedToStored(false);
     setStops((prev) => (prev.length >= 2 ? [...prev.slice(0, -1), stop, prev[prev.length - 1]] : [...prev, stop]));
     setPanToStop(stop.pos);
     toast.success(`${place.name} added to route`);
@@ -377,6 +377,7 @@ function GroupDetail() {
   const autoOrderStops = () => {
     if (isTourStarted) return toast.error("Route editing is locked in Live Mode");
     if (stops.length < 4) return toast.info("Add at least two stops between start and destination");
+    setRouteLockedToStored(false);
     const start = stops[0];
     const destination = stops[stops.length - 1];
     const remaining = stops.slice(1, -1);
@@ -404,7 +405,12 @@ function GroupDetail() {
     if (!group) return;
     const { error } = await supabase
       .from("tour_groups")
-      .update({ waypoints: stops as unknown as never })
+        .update({
+          waypoints: stops as unknown as never,
+          route_polyline: route?.coordinates ? encodePolyline(downsamplePolyline(route.coordinates, 200)) : null,
+          route_distance_m: route?.distance ?? 0,
+          route_duration_s: route?.duration ?? 0,
+        })
       .eq("id", group.id);
     if (error) toast.error(error.message);
     else toast.success("Route saved");
@@ -414,6 +420,7 @@ function GroupDetail() {
     if (isTourStarted) return toast.error("End the live tour before clearing the route");
     setStops([]);
     setRoute(null);
+    setRouteLockedToStored(false);
     setSuggestions([]);
   };
 
@@ -527,10 +534,10 @@ function GroupDetail() {
   // In live mode, fit to route + member positions so everyone stays visible.
   const bounds = useMemo(() => {
     const allPoints: [number, number][] = isTourStarted
-      ? [...locations.map((l) => [l.lat, l.lng] as [number, number]), ...waypoints]
-      : [...waypoints];
-    return pointsBounds(allPoints);
-  }, [isTourStarted, locations, waypoints]);
+      ? [...locations.map((l) => [l.lat, l.lng] as [number, number]), ...(route?.coordinates ?? waypoints)]
+      : [...(route?.coordinates ?? waypoints)];
+    return pointsBounds(allPoints.length ? allPoints : waypoints);
+  }, [isTourStarted, locations, route?.coordinates, waypoints]);
 
   const startTour = () => {
     if (waypoints.length < 2) {
@@ -614,7 +621,7 @@ function GroupDetail() {
           <SafetyMap
             userLocation={isTourStarted ? location : undefined}
             markers={mapMarkers}
-            routePolyline={route?.coordinates ?? (waypoints.length >= 2 ? waypoints : null)}
+            routePolyline={route?.coordinates ?? null}
             fitBounds={bounds}
             fitBoundsEnabled={isTourStarted || Boolean(panToStop) || waypoints.length > 1}
             panTo={panToStop}
@@ -633,6 +640,11 @@ function GroupDetail() {
               <span>
                 Stops: <b className="text-foreground">{stops.length}</b>
               </span>
+            </div>
+          )}
+          {waypoints.length >= 2 && !route && (
+            <div className="mt-2 rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
+              Road route unavailable. No straight-line route is shown.
             </div>
           )}
         </CardContent>
@@ -745,7 +757,7 @@ function GroupDetail() {
         </CardContent>
       </Card>
 
-      {stops.some(stopHasRichDetails) && (
+      {(group?.description || (group?.images && group.images.length > 0) || group?.tips || stops.some(stopHasRichDetails)) && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -755,7 +767,21 @@ function GroupDetail() {
               Detailed stop-by-stop itinerary imported from the community plan.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            {group?.images && group.images.length > 0 && (
+              <div className="-mx-2 flex gap-2 overflow-x-auto px-2 pb-1">
+                {group.images.map((src, idx) => (
+                  <img key={idx} src={src} alt={`${group.name} photo ${idx + 1}`} loading="lazy" className="h-28 w-44 shrink-0 rounded-md object-cover" />
+                ))}
+              </div>
+            )}
+            {group?.description && <p className="text-sm text-muted-foreground">{group.description}</p>}
+            {group?.tips && (
+              <div className="rounded-md border bg-accent/30 p-3 text-sm">
+                <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Travel tips</div>
+                <p className="whitespace-pre-wrap">{group.tips}</p>
+              </div>
+            )}
             <ol className="relative space-y-3 border-l-2 border-dashed border-muted pl-5">
               {stops.map((s, i) => {
                 const isStart = i === 0;
@@ -778,9 +804,9 @@ function GroupDetail() {
                         {isStart ? "Start · " : isEnd ? "Destination · " : ""}
                         {s.label}
                       </div>
-                      {s.detailedDescription && (
+                      {(s.detailedDescription || s.shortDescription || s.description) && (
                         <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">
-                          {s.detailedDescription}
+                          {s.detailedDescription || s.shortDescription || s.description}
                         </p>
                       )}
                       {Array.isArray(s.images) && s.images.length > 0 && (
@@ -829,6 +855,16 @@ function GroupDetail() {
                       {s.thingsToCarry && (
                         <div className="mt-1.5 rounded border-l-2 border-emerald-500 bg-emerald-500/10 px-2 py-1 text-[11px]">
                           🎒 {s.thingsToCarry}
+                        </div>
+                      )}
+                      {s.thingsToDo && (
+                        <div className="mt-1.5 rounded border-l-2 border-sky-500 bg-sky-500/10 px-2 py-1 text-[11px]">
+                          ✨ {s.thingsToDo}
+                        </div>
+                      )}
+                      {Array.isArray(s.tags) && s.tags.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {s.tags.map((tag) => <Badge key={tag} variant="outline" className="text-[10px] capitalize">{tag}</Badge>)}
                         </div>
                       )}
                       {Array.isArray(s.transportAvailability) && s.transportAvailability.length > 0 && (

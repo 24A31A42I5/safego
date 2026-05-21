@@ -63,6 +63,7 @@ export function CreateTourPlanDialog({ open, onOpenChange, onPublished }: Props)
       setRoute(null);
       return;
     }
+    setRoute(null);
     const ctrl = new AbortController();
     fetchRoute(waypoints, "driving", ctrl.signal).then((r) => {
       if (r) setRoute(r);
@@ -291,7 +292,7 @@ export function CreateTourPlanDialog({ open, onOpenChange, onPublished }: Props)
             <div className="space-y-2">
               <SafetyMap
                 markers={stopMarkers}
-                routePolyline={route?.coordinates ?? (waypoints.length >= 2 ? waypoints : null)}
+                routePolyline={route?.coordinates ?? null}
                 fitBounds={bounds}
                 fitBoundsEnabled={waypoints.length > 1 || Boolean(panTo)}
                 panTo={panTo}

@@ -441,27 +441,54 @@ export type Database = {
       }
       tour_groups: {
         Row: {
+          cover_image: string | null
           created_at: string
           creator_id: string
+          description: string | null
           id: string
+          images: string[]
           invite_code: string
           name: string
+          route_distance_m: number
+          route_duration_s: number
+          route_polyline: string | null
+          source_shared_tour_id: string | null
+          tags: string[]
+          tips: string | null
           waypoints: Json
         }
         Insert: {
+          cover_image?: string | null
           created_at?: string
           creator_id: string
+          description?: string | null
           id?: string
+          images?: string[]
           invite_code?: string
           name: string
+          route_distance_m?: number
+          route_duration_s?: number
+          route_polyline?: string | null
+          source_shared_tour_id?: string | null
+          tags?: string[]
+          tips?: string | null
           waypoints?: Json
         }
         Update: {
+          cover_image?: string | null
           created_at?: string
           creator_id?: string
+          description?: string | null
           id?: string
+          images?: string[]
           invite_code?: string
           name?: string
+          route_distance_m?: number
+          route_duration_s?: number
+          route_polyline?: string | null
+          source_shared_tour_id?: string | null
+          tags?: string[]
+          tips?: string | null
           waypoints?: Json
         }
         Relationships: []
