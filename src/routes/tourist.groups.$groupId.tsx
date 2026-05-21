@@ -107,6 +107,7 @@ function GroupDetail() {
   const [locations, setLocations] = useState<MemberLoc[]>([]);
   const [stops, setStops] = useState<Stop[]>([]);
   const [route, setRoute] = useState<RouteResult | null>(null);
+  const [routeLockedToStored, setRouteLockedToStored] = useState(false);
   const [suggestions, setSuggestions] = useState<SuggestedPOI[]>([]);
   const [aiBusy, setAiBusy] = useState(false);
   const [clickToAdd, setClickToAdd] = useState(false);
@@ -135,27 +136,16 @@ function GroupDetail() {
       }
       setGroup(g);
       const wp = Array.isArray(g.waypoints) ? (g.waypoints as unknown[]) : [];
-      // Support both legacy [lat,lng] and new {pos,label}
-      const parsed: Stop[] = wp.map((w, i) => {
-        if (Array.isArray(w) && w.length === 2) {
-          return { pos: [w[0] as number, w[1] as number], label: `Stop ${i + 1}` };
-        }
-        const o = w as Partial<Stop>;
-        return {
-          pos: o.pos ?? [0, 0],
-          label: o.label ?? `Stop ${i + 1}`,
-          detailedDescription: o.detailedDescription,
-          images: o.images,
-          stayDuration: o.stayDuration,
-          bestTimeToVisit: o.bestTimeToVisit,
-          travelTips: o.travelTips,
-          warnings: o.warnings,
-          estimatedCost: o.estimatedCost,
-          thingsToCarry: o.thingsToCarry,
-          transportAvailability: o.transportAvailability,
-        };
-      });
+      const parsed: Stop[] = wp.map((w, i) => parseGroupJourneyStop(w, i));
       setStops(parsed);
+      if (g.route_polyline) {
+        const coordinates = decodePolyline(g.route_polyline);
+        setRoute({ coordinates, distance: g.route_distance_m ?? 0, duration: g.route_duration_s ?? 0 });
+        setRouteLockedToStored(coordinates.length > 1);
+      } else {
+        setRoute(null);
+        setRouteLockedToStored(false);
+      }
 
       const { data: ms } = await supabase
         .from("tour_group_members")
