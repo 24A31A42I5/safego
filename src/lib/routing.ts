@@ -1,5 +1,6 @@
 // OSRM public demo routing client. Free, no key, rate-limited (suitable for demos).
 // https://project-osrm.org/docs/v5.24.0/api/#route-service
+import { decodePolyline } from "@/lib/polyline";
 
 export interface RouteResult {
   coordinates: [number, number][]; // [lat, lng] pairs (Leaflet-friendly)
@@ -21,16 +22,15 @@ export async function fetchRoute(
 ): Promise<RouteResult | null> {
   if (waypoints.length < 2) return null;
   const coordsStr = waypoints.map(([lat, lng]) => `${lng},${lat}`).join(";");
-  const url = `${OSRM_BASE}/${profile}/${coordsStr}?overview=full&geometries=geojson`;
+  const url = `${OSRM_BASE}/${profile}/${coordsStr}?overview=full&geometries=polyline`;
   try {
     const res = await fetch(url, { signal });
     if (!res.ok) return null;
     const data = await res.json();
     const route = data?.routes?.[0];
     if (!route) return null;
-    const geo: [number, number][] = (route.geometry?.coordinates ?? []).map(
-      ([lng, lat]: [number, number]) => [lat, lng] as [number, number]
-    );
+    const geo = typeof route.geometry === "string" ? decodePolyline(route.geometry) : [];
+    if (geo.length < 2) return null;
     return {
       coordinates: geo,
       distance: route.distance ?? 0,
