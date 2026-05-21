@@ -24,6 +24,7 @@ import { haversine, pointsBounds } from "@/lib/geo";
 import { formatDistance, formatDuration } from "@/lib/routing";
 import { TourCommentsPanel } from "@/components/TourCommentsPanel";
 import { CreateTourPlanDialog } from "@/components/CreateTourPlanDialog";
+import { richStopToGroupStop, type RichStop } from "@/lib/tour-stop";
 
 export const Route = createFileRoute("/tourist/discover")({
   component: DiscoverPage,
@@ -313,9 +314,50 @@ function DiscoverPage() {
     setUseBusy(tour.id);
     try {
       const groupName = tour.title.slice(0, 60) || "Community trip";
+      const sortedStops = [...tour.stops].sort((a, b) => a.order - b.order) as RichStop[];
+      const waypoints = [
+        {
+          id: "start",
+          order: 0,
+          name: tour.start_label,
+          label: tour.start_label,
+          lat: tour.start_lat,
+          lng: tour.start_lng,
+          pos: [tour.start_lat, tour.start_lng] as [number, number],
+          images: [],
+          tags: [],
+          transportAvailability: [],
+        },
+        ...sortedStops.map((stop, i) => richStopToGroupStop(stop, i + 1)),
+        {
+          id: "destination",
+          order: sortedStops.length + 1,
+          name: tour.dest_label,
+          label: tour.dest_label,
+          lat: tour.dest_lat,
+          lng: tour.dest_lng,
+          pos: [tour.dest_lat, tour.dest_lng] as [number, number],
+          images: [],
+          tags: [],
+          transportAvailability: [],
+        },
+      ];
       const { data: g, error } = await supabase
         .from("tour_groups")
-        .insert({ name: groupName, creator_id: user.id })
+        .insert({
+          name: groupName,
+          creator_id: user.id,
+          description: tour.description,
+          cover_image: tour.images[0] ?? null,
+          images: tour.images,
+          tips: tour.tips,
+          tags: tour.tags,
+          route_polyline: tour.route_polyline,
+          route_distance_m: tour.route_distance_m,
+          route_duration_s: tour.route_duration_s,
+          source_shared_tour_id: tour.id,
+          waypoints: waypoints as unknown as never,
+        })
         .select("id")
         .single();
       if (error || !g) throw error ?? new Error("Failed to create group");
@@ -326,7 +368,7 @@ function DiscoverPage() {
       navigate({
         to: "/tourist/groups/$groupId",
         params: { groupId: g.id },
-        search: { applyTour: tour.id },
+        search: { applyTour: undefined },
       });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not create group");
