@@ -338,7 +338,8 @@ function GroupDetail() {
   // ---- Stop management ----
   const addStop = (pos: [number, number], label: string) => {
     if (isTourStarted) return toast.error("End the live tour before editing the route");
-    setStops((prev) => [...prev, { pos, label }]);
+    setRouteLockedToStored(false);
+    setStops((prev) => [...prev, makeStop(pos, label, prev.length)]);
     setPanToStop(pos);
   };
   const removeStop = (idx: number) => {
@@ -361,7 +362,8 @@ function GroupDetail() {
 
   const addSuggestionToRoute = (place: SuggestedPOI) => {
     if (isTourStarted) return toast.error("End the live tour before editing the route");
-    const stop = { pos: [place.lat, place.lon] as [number, number], label: place.name };
+    const stop = makeStop([place.lat, place.lon], place.name, stops.length);
+    setRouteLockedToStored(false);
     setStops((prev) => (prev.length >= 2 ? [...prev.slice(0, -1), stop, prev[prev.length - 1]] : [...prev, stop]));
     setPanToStop(stop.pos);
     toast.success(`${place.name} added to route`);
