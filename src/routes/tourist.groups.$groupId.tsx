@@ -621,7 +621,7 @@ function GroupDetail() {
           <SafetyMap
             userLocation={isTourStarted ? location : undefined}
             markers={mapMarkers}
-            routePolyline={route?.coordinates ?? (waypoints.length >= 2 ? waypoints : null)}
+            routePolyline={route?.coordinates ?? null}
             fitBounds={bounds}
             fitBoundsEnabled={isTourStarted || Boolean(panToStop) || waypoints.length > 1}
             panTo={panToStop}
@@ -640,6 +640,11 @@ function GroupDetail() {
               <span>
                 Stops: <b className="text-foreground">{stops.length}</b>
               </span>
+            </div>
+          )}
+          {waypoints.length >= 2 && !route && (
+            <div className="mt-2 rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
+              Road route unavailable. No straight-line route is shown.
             </div>
           )}
         </CardContent>
