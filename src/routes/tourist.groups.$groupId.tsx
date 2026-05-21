@@ -805,9 +805,9 @@ function GroupDetail() {
                         {isStart ? "Start · " : isEnd ? "Destination · " : ""}
                         {s.label}
                       </div>
-                      {s.detailedDescription && (
+                      {(s.detailedDescription || s.shortDescription || s.description) && (
                         <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">
-                          {s.detailedDescription}
+                          {s.detailedDescription || s.shortDescription || s.description}
                         </p>
                       )}
                       {Array.isArray(s.images) && s.images.length > 0 && (
@@ -856,6 +856,16 @@ function GroupDetail() {
                       {s.thingsToCarry && (
                         <div className="mt-1.5 rounded border-l-2 border-emerald-500 bg-emerald-500/10 px-2 py-1 text-[11px]">
                           🎒 {s.thingsToCarry}
+                        </div>
+                      )}
+                      {s.thingsToDo && (
+                        <div className="mt-1.5 rounded border-l-2 border-sky-500 bg-sky-500/10 px-2 py-1 text-[11px]">
+                          ✨ {s.thingsToDo}
+                        </div>
+                      )}
+                      {Array.isArray(s.tags) && s.tags.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {s.tags.map((tag) => <Badge key={tag} variant="outline" className="text-[10px] capitalize">{tag}</Badge>)}
                         </div>
                       )}
                       {Array.isArray(s.transportAvailability) && s.transportAvailability.length > 0 && (
