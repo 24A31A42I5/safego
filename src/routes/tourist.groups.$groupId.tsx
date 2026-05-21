@@ -25,12 +25,11 @@ import {
   RouteIcon,
   Clock,
 } from "lucide-react";
-import { TRANSPORT_OPTIONS } from "@/lib/tour-stop";
 import { fetchRoute, formatDistance, formatDuration, type RouteResult } from "@/lib/routing";
 import type { SuggestedPOI } from "@/lib/nominatim";
 import { haversine, pointsBounds } from "@/lib/geo";
 import { decodePolyline, downsamplePolyline, encodePolyline } from "@/lib/polyline";
-import { parseGroupJourneyStop, richStopToGroupStop, type GroupJourneyStop, type RichStop } from "@/lib/tour-stop";
+import { TRANSPORT_OPTIONS, parseGroupJourneyStop, richStopToGroupStop, type GroupJourneyStop, type RichStop } from "@/lib/tour-stop";
 
 import { ShareTourDialog, type ShareTourPayload } from "@/components/ShareTourDialog";
 import { Share2 } from "lucide-react";
