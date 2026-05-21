@@ -288,6 +288,7 @@ function GroupDetail() {
       return;
     }
     if (routeLockedToStored) return;
+    setRoute(null);
     const ctrl = new AbortController();
     fetchRoute(waypoints, "driving", ctrl.signal).then((r) => {
       if (r) setRoute(r);
@@ -534,10 +535,10 @@ function GroupDetail() {
   // In live mode, fit to route + member positions so everyone stays visible.
   const bounds = useMemo(() => {
     const allPoints: [number, number][] = isTourStarted
-      ? [...locations.map((l) => [l.lat, l.lng] as [number, number]), ...waypoints]
-      : [...waypoints];
-    return pointsBounds(allPoints);
-  }, [isTourStarted, locations, waypoints]);
+      ? [...locations.map((l) => [l.lat, l.lng] as [number, number]), ...(route?.coordinates ?? waypoints)]
+      : [...(route?.coordinates ?? waypoints)];
+    return pointsBounds(allPoints.length ? allPoints : waypoints);
+  }, [isTourStarted, locations, route?.coordinates, waypoints]);
 
   const startTour = () => {
     if (waypoints.length < 2) {
