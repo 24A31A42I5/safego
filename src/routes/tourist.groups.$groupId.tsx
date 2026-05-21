@@ -29,6 +29,8 @@ import { TRANSPORT_OPTIONS, type TransportOption } from "@/lib/tour-stop";
 import { fetchRoute, formatDistance, formatDuration, type RouteResult } from "@/lib/routing";
 import type { SuggestedPOI } from "@/lib/nominatim";
 import { haversine, pointsBounds } from "@/lib/geo";
+import { decodePolyline, downsamplePolyline, encodePolyline } from "@/lib/polyline";
+import { parseGroupJourneyStop, richStopToGroupStop, type GroupJourneyStop, type RichStop } from "@/lib/tour-stop";
 
 import { ShareTourDialog, type ShareTourPayload } from "@/components/ShareTourDialog";
 import { Share2 } from "lucide-react";
@@ -57,6 +59,15 @@ interface GroupRow {
   invite_code: string;
   creator_id: string;
   waypoints: unknown;
+  description: string | null;
+  cover_image: string | null;
+  images: string[];
+  route_polyline: string | null;
+  route_distance_m: number;
+  route_duration_s: number;
+  tips: string | null;
+  tags: string[];
+  source_shared_tour_id: string | null;
 }
 
 interface MemberLoc {
@@ -71,19 +82,7 @@ interface MemberProfile {
   full_name: string;
 }
 
-interface Stop {
-  pos: [number, number];
-  label: string;
-  detailedDescription?: string;
-  images?: string[];
-  stayDuration?: string;
-  bestTimeToVisit?: string;
-  travelTips?: string;
-  warnings?: string;
-  estimatedCost?: string;
-  thingsToCarry?: string;
-  transportAvailability?: TransportOption[];
-}
+type Stop = GroupJourneyStop;
 
 const COLORS = ["#3b82f6", "#ec4899", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#06b6d4", "#84cc16"];
 
