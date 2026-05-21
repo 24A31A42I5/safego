@@ -63,6 +63,7 @@ export function CreateTourPlanDialog({ open, onOpenChange, onPublished }: Props)
       setRoute(null);
       return;
     }
+    setRoute(null);
     const ctrl = new AbortController();
     fetchRoute(waypoints, "driving", ctrl.signal).then((r) => {
       if (r) setRoute(r);
