@@ -9,7 +9,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
-import { encodePolyline, downsamplePolyline } from "@/lib/polyline";
+import { encodePolyline } from "@/lib/polyline";
 import { Share2, MapPin } from "lucide-react";
 import { TourPhotoUpload } from "@/components/TourPhotoUpload";
 import {
@@ -76,7 +76,7 @@ export function ShareTourDialog({ open, onOpenChange, payload }: Props) {
     setBusy(true);
     try {
       const polyline = payload.routeCoordinates
-        ? encodePolyline(downsamplePolyline(payload.routeCoordinates, 200))
+        ? encodePolyline(payload.routeCoordinates)
         : null;
       const stops: RichStop[] = payload.intermediateStops.map((s, i) => {
         const d = stopDrafts[i] ?? emptyStopDraft();
