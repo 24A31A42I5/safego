@@ -353,6 +353,7 @@ function GroupDetail() {
   const moveStop = (idx: number, dir: -1 | 1) =>
     setStops((prev) => {
       if (isTourStarted) return prev;
+      setRouteLockedToStored(false);
       const next = [...prev];
       const j = idx + dir;
       if (j < 0 || j >= next.length) return prev;
@@ -404,7 +405,12 @@ function GroupDetail() {
     if (!group) return;
     const { error } = await supabase
       .from("tour_groups")
-      .update({ waypoints: stops as unknown as never })
+        .update({
+          waypoints: stops as unknown as never,
+          route_polyline: route?.coordinates ? encodePolyline(downsamplePolyline(route.coordinates, 200)) : null,
+          route_distance_m: route?.distance ?? 0,
+          route_duration_s: route?.duration ?? 0,
+        })
       .eq("id", group.id);
     if (error) toast.error(error.message);
     else toast.success("Route saved");
@@ -414,6 +420,7 @@ function GroupDetail() {
     if (isTourStarted) return toast.error("End the live tour before clearing the route");
     setStops([]);
     setRoute(null);
+    setRouteLockedToStored(false);
     setSuggestions([]);
   };
 
