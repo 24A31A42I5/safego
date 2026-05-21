@@ -86,6 +86,7 @@ export function ShareTourDialog({ open, onOpenChange, payload }: Props) {
           lat: s.pos[0],
           lng: s.pos[1],
           order: i,
+          shortDescription: d.detailedDescription.trim().slice(0, 160) || undefined,
           description: d.detailedDescription.trim().slice(0, 160) || undefined,
           detailedDescription: d.detailedDescription.trim() || undefined,
           images: d.images.length ? d.images : undefined,
