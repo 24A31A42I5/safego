@@ -25,7 +25,7 @@ import {
   RouteIcon,
   Clock,
 } from "lucide-react";
-import { TRANSPORT_OPTIONS, type TransportOption } from "@/lib/tour-stop";
+import { TRANSPORT_OPTIONS } from "@/lib/tour-stop";
 import { fetchRoute, formatDistance, formatDuration, type RouteResult } from "@/lib/routing";
 import type { SuggestedPOI } from "@/lib/nominatim";
 import { haversine, pointsBounds } from "@/lib/geo";
@@ -85,6 +85,19 @@ interface MemberProfile {
 type Stop = GroupJourneyStop;
 
 const COLORS = ["#3b82f6", "#ec4899", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#06b6d4", "#84cc16"];
+
+const makeStop = (pos: [number, number], label: string, order: number): Stop => ({
+  id: `stop-${order}-${pos[0].toFixed(5)}-${pos[1].toFixed(5)}`,
+  order,
+  name: label,
+  label,
+  lat: pos[0],
+  lng: pos[1],
+  pos,
+  images: [],
+  tags: [],
+  transportAvailability: [],
+});
 
 function GroupDetail() {
   const { groupId } = Route.useParams();
