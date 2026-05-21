@@ -24,7 +24,7 @@ import { haversine, pointsBounds } from "@/lib/geo";
 import { formatDistance, formatDuration } from "@/lib/routing";
 import { TourCommentsPanel } from "@/components/TourCommentsPanel";
 import { CreateTourPlanDialog } from "@/components/CreateTourPlanDialog";
-import { richStopToGroupStop, type RichStop } from "@/lib/tour-stop";
+import { TRANSPORT_OPTIONS, richStopToGroupStop, type RichStop, type TransportOption } from "@/lib/tour-stop";
 
 export const Route = createFileRoute("/tourist/discover")({
   component: DiscoverPage,
@@ -38,8 +38,6 @@ export const Route = createFileRoute("/tourist/discover")({
     ],
   }),
 });
-
-import { TRANSPORT_OPTIONS, type TransportOption } from "@/lib/tour-stop";
 
 interface Stop {
   name: string;
