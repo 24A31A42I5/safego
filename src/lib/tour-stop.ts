@@ -19,18 +19,21 @@ export const TRANSPORT_OPTIONS: { type: TransportType; label: string; icon: stri
 ];
 
 export interface RichStop {
+  id?: string;
   name: string;
   lat: number;
   lng: number;
   order: number;
-  description?: string;          // short description (legacy)
-  detailedDescription?: string;  // long-form notes
-  images?: string[];             // per-stop photos
+  shortDescription?: string;
+  description?: string; // legacy short description
+  detailedDescription?: string;
+  images?: string[];
   stayDuration?: string;
   bestTimeToVisit?: string;
   travelTips?: string;
   warnings?: string;
   estimatedCost?: string;
+  thingsToDo?: string;
   thingsToCarry?: string;
   transportAvailability?: TransportOption[];
   tags?: string[];
