@@ -284,14 +284,17 @@ function GroupDetail() {
   useEffect(() => {
     if (waypoints.length < 2) {
       setRoute(null);
+      setRouteLockedToStored(false);
       return;
     }
+    if (routeLockedToStored) return;
     const ctrl = new AbortController();
     fetchRoute(waypoints, "driving", ctrl.signal).then((r) => {
       if (r) setRoute(r);
+      else setRoute(null);
     });
     return () => ctrl.abort();
-  }, [waypoints]);
+  }, [routeLockedToStored, waypoints]);
 
   // Distance-based separation alerts
   useEffect(() => {
@@ -344,6 +347,7 @@ function GroupDetail() {
   };
   const removeStop = (idx: number) => {
     if (isTourStarted) return toast.error("Route editing is locked in Live Mode");
+    setRouteLockedToStored(false);
     setStops((prev) => prev.filter((_, i) => i !== idx));
   };
   const moveStop = (idx: number, dir: -1 | 1) =>
@@ -372,6 +376,7 @@ function GroupDetail() {
   const autoOrderStops = () => {
     if (isTourStarted) return toast.error("Route editing is locked in Live Mode");
     if (stops.length < 4) return toast.info("Add at least two stops between start and destination");
+    setRouteLockedToStored(false);
     const start = stops[0];
     const destination = stops[stops.length - 1];
     const remaining = stops.slice(1, -1);
