@@ -758,7 +758,7 @@ function GroupDetail() {
         </CardContent>
       </Card>
 
-      {stops.some(stopHasRichDetails) && (
+      {(group?.description || (group?.images && group.images.length > 0) || group?.tips || stops.some(stopHasRichDetails)) && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -768,7 +768,21 @@ function GroupDetail() {
               Detailed stop-by-stop itinerary imported from the community plan.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            {group?.images && group.images.length > 0 && (
+              <div className="-mx-2 flex gap-2 overflow-x-auto px-2 pb-1">
+                {group.images.map((src, idx) => (
+                  <img key={idx} src={src} alt={`${group.name} photo ${idx + 1}`} loading="lazy" className="h-28 w-44 shrink-0 rounded-md object-cover" />
+                ))}
+              </div>
+            )}
+            {group?.description && <p className="text-sm text-muted-foreground">{group.description}</p>}
+            {group?.tips && (
+              <div className="rounded-md border bg-accent/30 p-3 text-sm">
+                <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Travel tips</div>
+                <p className="whitespace-pre-wrap">{group.tips}</p>
+              </div>
+            )}
             <ol className="relative space-y-3 border-l-2 border-dashed border-muted pl-5">
               {stops.map((s, i) => {
                 const isStart = i === 0;
