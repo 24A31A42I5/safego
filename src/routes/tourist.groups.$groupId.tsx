@@ -185,45 +185,36 @@ function GroupDetail() {
         navigate({ search: { applyTour: undefined }, replace: true });
         return;
       }
-      type SharedStop = {
-        name: string;
-        lat: number;
-        lng: number;
-        order: number;
-        detailedDescription?: string;
-        description?: string;
-        images?: string[];
-        stayDuration?: string;
-        bestTimeToVisit?: string;
-        travelTips?: string;
-        warnings?: string;
-        estimatedCost?: string;
-        thingsToCarry?: string;
-        transportAvailability?: TransportOption[];
-      };
-      const sortedStops = [...(data.stops as unknown as SharedStop[])].sort((a, b) => a.order - b.order);
+      const sortedStops = [...(data.stops as unknown as RichStop[])].sort((a, b) => a.order - b.order);
       const next: Stop[] = [
-        { pos: [data.start_lat, data.start_lng], label: data.start_label },
-        ...sortedStops.map((s) => ({
-          pos: [s.lat, s.lng] as [number, number],
-          label: s.name,
-          detailedDescription: s.detailedDescription ?? s.description,
-          images: s.images,
-          stayDuration: s.stayDuration,
-          bestTimeToVisit: s.bestTimeToVisit,
-          travelTips: s.travelTips,
-          warnings: s.warnings,
-          estimatedCost: s.estimatedCost,
-          thingsToCarry: s.thingsToCarry,
-          transportAvailability: s.transportAvailability,
-        })),
-        { pos: [data.dest_lat, data.dest_lng], label: data.dest_label },
+        makeStop([data.start_lat, data.start_lng], data.start_label, 0),
+        ...sortedStops.map((s, i) => richStopToGroupStop(s, i + 1)),
+        makeStop([data.dest_lat, data.dest_lng], data.dest_label, sortedStops.length + 1),
       ];
+      const routeCoordinates = data.route_polyline ? decodePolyline(data.route_polyline) : [];
       setStops(next);
+      setRoute(
+        routeCoordinates.length > 1
+          ? { coordinates: routeCoordinates, distance: data.route_distance_m ?? 0, duration: data.route_duration_s ?? 0 }
+          : null,
+      );
+      setRouteLockedToStored(routeCoordinates.length > 1);
       // Persist immediately so the rich plan survives a refresh.
       void supabase
         .from("tour_groups")
-        .update({ name: data.title ?? undefined, waypoints: next as unknown as never })
+        .update({
+          name: data.title ?? undefined,
+          description: data.description,
+          cover_image: Array.isArray(data.images) && data.images.length > 0 ? data.images[0] : null,
+          images: data.images ?? [],
+          route_polyline: data.route_polyline,
+          route_distance_m: data.route_distance_m ?? 0,
+          route_duration_s: data.route_duration_s ?? 0,
+          tips: data.tips,
+          tags: data.tags ?? [],
+          source_shared_tour_id: data.id,
+          waypoints: next as unknown as never,
+        })
         .eq("id", groupId);
       toast.success(`Loaded "${data.title}" with ${sortedStops.length} stop${sortedStops.length === 1 ? "" : "s"}`);
       navigate({ search: { applyTour: undefined }, replace: true });
