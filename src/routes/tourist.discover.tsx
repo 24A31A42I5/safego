@@ -679,7 +679,7 @@ function TourDetailDialog({
 
   if (!tour) return null;
   const stops = [...tour.stops].sort((a, b) => a.order - b.order);
-  const route = polyline ?? markers.map((m) => m.pos);
+  const route = polyline;
 
   return (
     <Dialog open={!!tour} onOpenChange={(o) => !o && onClose()}>
@@ -704,7 +704,12 @@ function TourDetailDialog({
             </div>
           )}
 
-          <SafetyMap markers={markers} routePolyline={route} fitBounds={pointsBounds(route)} fitBoundsEnabled height="280px" />
+          <SafetyMap markers={markers} routePolyline={route} fitBounds={pointsBounds(route ?? markers.map((m) => m.pos))} fitBoundsEnabled height="280px" />
+          {!route && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
+              Road route unavailable. No straight-line route is shown.
+            </div>
+          )}
 
           <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
             <span><RouteIcon className="mr-1 inline h-3 w-3" />{formatDistance(tour.route_distance_m)}</span>
