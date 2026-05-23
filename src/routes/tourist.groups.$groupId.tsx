@@ -115,6 +115,7 @@ function GroupDetail() {
   const { location } = useGeolocation(isTourStarted);
   const [panToStop, setPanToStop] = useState<[number, number] | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [editStopIndex, setEditStopIndex] = useState<number | null>(null);
   const lastAlertedRef = useRef<Map<string, "warning" | "critical">>(new Map());
   const { applyTour } = Route.useSearch();
   const navigate = Route.useNavigate();
