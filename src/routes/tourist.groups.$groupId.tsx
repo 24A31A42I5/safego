@@ -995,6 +995,16 @@ function GroupDetail() {
             : null
         }
       />
+
+      <EditStopDialog
+        open={editStopIndex !== null}
+        onOpenChange={(v) => { if (!v) setEditStopIndex(null); }}
+        stop={editStopIndex !== null ? stops[editStopIndex] ?? null : null}
+        stopIndex={editStopIndex ?? 0}
+        onSave={async (patch) => {
+          if (editStopIndex !== null) await saveStopDetails(editStopIndex, patch);
+        }}
+      />
     </div>
   );
 }
