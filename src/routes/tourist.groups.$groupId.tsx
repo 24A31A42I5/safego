@@ -418,6 +418,18 @@ function GroupDetail() {
     else toast.success("Route saved");
   };
 
+  const saveStopDetails = async (index: number, patch: Partial<Stop>) => {
+    if (!group) return;
+    const next = stops.map((s, i) => (i === index ? { ...s, ...patch } : s));
+    setStops(next);
+    const { error } = await supabase
+      .from("tour_groups")
+      .update({ waypoints: next as unknown as never })
+      .eq("id", group.id);
+    if (error) toast.error(error.message);
+    else toast.success("Stop updated");
+  };
+
   const clearRoute = () => {
     if (isTourStarted) return toast.error("End the live tour before clearing the route");
     setStops([]);
