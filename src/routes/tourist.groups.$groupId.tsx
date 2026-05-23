@@ -32,7 +32,8 @@ import { decodePolyline, downsamplePolyline, encodePolyline } from "@/lib/polyli
 import { TRANSPORT_OPTIONS, parseGroupJourneyStop, richStopToGroupStop, type GroupJourneyStop, type RichStop } from "@/lib/tour-stop";
 
 import { ShareTourDialog, type ShareTourPayload } from "@/components/ShareTourDialog";
-import { Share2 } from "lucide-react";
+import { EditStopDialog } from "@/components/EditStopDialog";
+import { Share2, Pencil } from "lucide-react";
 
 export const Route = createFileRoute("/tourist/groups/$groupId")({
   head: () => ({
@@ -114,6 +115,7 @@ function GroupDetail() {
   const { location } = useGeolocation(isTourStarted);
   const [panToStop, setPanToStop] = useState<[number, number] | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [editStopIndex, setEditStopIndex] = useState<number | null>(null);
   const lastAlertedRef = useRef<Map<string, "warning" | "critical">>(new Map());
   const { applyTour } = Route.useSearch();
   const navigate = Route.useNavigate();
@@ -414,6 +416,18 @@ function GroupDetail() {
       .eq("id", group.id);
     if (error) toast.error(error.message);
     else toast.success("Route saved");
+  };
+
+  const saveStopDetails = async (index: number, patch: Partial<Stop>) => {
+    if (!group) return;
+    const next = stops.map((s, i) => (i === index ? { ...s, ...patch } : s));
+    setStops(next);
+    const { error } = await supabase
+      .from("tour_groups")
+      .update({ waypoints: next as unknown as never })
+      .eq("id", group.id);
+    if (error) toast.error(error.message);
+    else toast.success("Stop updated");
   };
 
   const clearRoute = () => {
@@ -800,9 +814,21 @@ function GroupDetail() {
                       {badge}
                     </span>
                     <div className="rounded-md border bg-card p-2.5">
-                      <div className="text-sm font-semibold">
-                        {isStart ? "Start · " : isEnd ? "Destination · " : ""}
-                        {s.label}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="text-sm font-semibold">
+                          {isStart ? "Start · " : isEnd ? "Destination · " : ""}
+                          {s.label}
+                        </div>
+                        {user?.id === group?.creator_id && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 gap-1 px-2 text-[11px]"
+                            onClick={() => setEditStopIndex(i)}
+                          >
+                            <Pencil className="h-3 w-3" /> Edit
+                          </Button>
+                        )}
                       </div>
                       {(s.detailedDescription || s.shortDescription || s.description) && (
                         <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">
@@ -968,6 +994,16 @@ function GroupDetail() {
               } satisfies ShareTourPayload)
             : null
         }
+      />
+
+      <EditStopDialog
+        open={editStopIndex !== null}
+        onOpenChange={(v) => { if (!v) setEditStopIndex(null); }}
+        stop={editStopIndex !== null ? stops[editStopIndex] ?? null : null}
+        stopIndex={editStopIndex ?? 0}
+        onSave={async (patch) => {
+          if (editStopIndex !== null) await saveStopDetails(editStopIndex, patch);
+        }}
       />
     </div>
   );
