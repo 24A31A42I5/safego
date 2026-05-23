@@ -32,7 +32,8 @@ import { decodePolyline, downsamplePolyline, encodePolyline } from "@/lib/polyli
 import { TRANSPORT_OPTIONS, parseGroupJourneyStop, richStopToGroupStop, type GroupJourneyStop, type RichStop } from "@/lib/tour-stop";
 
 import { ShareTourDialog, type ShareTourPayload } from "@/components/ShareTourDialog";
-import { Share2 } from "lucide-react";
+import { EditStopDialog } from "@/components/EditStopDialog";
+import { Share2, Pencil } from "lucide-react";
 
 export const Route = createFileRoute("/tourist/groups/$groupId")({
   head: () => ({
