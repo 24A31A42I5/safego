@@ -716,9 +716,21 @@ function TourPostCard({
             <Share2 className="h-4 w-4" />
           </Button>
         </div>
-        <Button size="sm" onClick={onUse} className="h-7 gap-1">
-          <Sparkles className="h-3 w-3" /> Use
-        </Button>
+        <div className="flex items-center gap-1">
+          {isOwner && (
+            <>
+              <Button variant="ghost" size="sm" onClick={onEdit} className="h-7 gap-1 px-2 text-xs" aria-label="Edit plan">
+                <Pencil className="h-3.5 w-3.5" /> Edit
+              </Button>
+              <Button variant="ghost" size="sm" onClick={onDelete} className="h-7 gap-1 px-2 text-xs text-destructive hover:text-destructive" aria-label="Delete plan">
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </>
+          )}
+          <Button size="sm" onClick={onUse} className="h-7 gap-1">
+            <Sparkles className="h-3 w-3" /> Use
+          </Button>
+        </div>
       </div>
     </Card>
   );
