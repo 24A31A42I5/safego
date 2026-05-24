@@ -16,7 +16,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
   Search, Compass, MapPin, Heart, MessageCircle, Bookmark, Share2,
   Clock, Route as RouteIcon, Users, Sparkles, Filter, X, Loader2,
-  ChevronLeft, ChevronRight, Plus, Upload,
+  ChevronLeft, ChevronRight, Plus, Upload, Pencil, Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { decodePolyline } from "@/lib/polyline";
@@ -24,6 +24,17 @@ import { haversine, pointsBounds } from "@/lib/geo";
 import { formatDistance, formatDuration } from "@/lib/routing";
 import { TourCommentsPanel } from "@/components/TourCommentsPanel";
 import { CreateTourPlanDialog } from "@/components/CreateTourPlanDialog";
+import { EditTourPlanDialog } from "@/components/EditTourPlanDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { TRANSPORT_OPTIONS, richStopToGroupStop, type RichStop, type TransportOption } from "@/lib/tour-stop";
 
 export const Route = createFileRoute("/tourist/discover")({
