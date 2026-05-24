@@ -538,19 +538,25 @@ function DiscoverPage() {
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
-          {results.map((t) => (
-            <TourPostCard
-              key={t.id}
-              tour={t}
-              liked={myLikes.has(t.id)}
-              saved={mySaves.has(t.id)}
-              onOpen={() => setSelected(t)}
-              onLike={() => toggleLike(t)}
-              onSave={() => toggleSave(t)}
-              onShare={() => sharePlan(t)}
-              onUse={() => useThisPlan(t)}
-            />
-          ))}
+          {results.map((t) => {
+            const isMine = !!user && t.creator_id === user.id;
+            return (
+              <TourPostCard
+                key={t.id}
+                tour={t}
+                liked={myLikes.has(t.id)}
+                saved={mySaves.has(t.id)}
+                isOwner={isMine}
+                onOpen={() => setSelected(t)}
+                onLike={() => toggleLike(t)}
+                onSave={() => toggleSave(t)}
+                onShare={() => sharePlan(t)}
+                onUse={() => useThisPlan(t)}
+                onEdit={() => setEditTour(t)}
+                onDelete={() => setDeleteTour(t)}
+              />
+            );
+          })}
         </div>
       )}
 
@@ -563,9 +569,37 @@ function DiscoverPage() {
         onShare={(t) => sharePlan(t)}
         liked={selected ? myLikes.has(selected.id) : false}
         saved={selected ? mySaves.has(selected.id) : false}
+        isOwner={!!user && !!selected && selected.creator_id === user.id}
+        onEdit={(t) => setEditTour(t)}
+        onDelete={(t) => setDeleteTour(t)}
       />
 
       <CreateTourPlanDialog open={uploadOpen} onOpenChange={setUploadOpen} onPublished={() => { setUploadOpen(false); void runSearch(); }} />
+
+      <EditTourPlanDialog
+        open={!!editTour}
+        onOpenChange={(v) => { if (!v) setEditTour(null); }}
+        tour={editTour}
+        onSaved={(patch) => { if (editTour) applyEditPatch(editTour.id, patch); }}
+      />
+
+      <AlertDialog open={!!deleteTour} onOpenChange={(v) => { if (!v && !deleting) setDeleteTour(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this plan?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove “{deleteTour?.title}” from Discover. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); void confirmDelete(); }} disabled={deleting}>
+              {deleting ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Trash2 className="mr-1 h-4 w-4" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Floating action button (mobile) */}
       <Button
