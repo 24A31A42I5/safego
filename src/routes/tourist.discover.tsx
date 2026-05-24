@@ -937,6 +937,16 @@ function TourDetailDialog({
           <Button variant="ghost" size="sm" onClick={() => onShare(tour)} aria-label="Share">
             <Share2 className="h-4 w-4" />
           </Button>
+          {isOwner && (
+            <>
+              <Button variant="ghost" size="sm" onClick={() => onEdit(tour)} className="gap-1">
+                <Pencil className="h-4 w-4" /> <span className="text-xs">Edit</span>
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => onDelete(tour)} className="gap-1 text-destructive hover:text-destructive">
+                <Trash2 className="h-4 w-4" /> <span className="text-xs">Delete</span>
+              </Button>
+            </>
+          )}
           <div className="flex-1" />
           <Button size="sm" onClick={() => onUse(tour)}>
             <Sparkles className="mr-1 h-4 w-4" /> Use this plan
