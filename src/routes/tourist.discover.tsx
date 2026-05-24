@@ -737,7 +737,7 @@ function TourPostCard({
 }
 
 function TourDetailDialog({
-  tour, onClose, onUse, onLike, onSave, onShare, liked, saved,
+  tour, onClose, onUse, onLike, onSave, onShare, liked, saved, isOwner, onEdit, onDelete,
 }: {
   tour: ScoredTour | null;
   onClose: () => void;
@@ -747,6 +747,9 @@ function TourDetailDialog({
   onShare: (t: ScoredTour) => void;
   liked: boolean;
   saved: boolean;
+  isOwner: boolean;
+  onEdit: (t: ScoredTour) => void;
+  onDelete: (t: ScoredTour) => void;
 }) {
   const markers: MapMarker[] = useMemo(() => {
     if (!tour) return [];
