@@ -141,6 +141,9 @@ function DiscoverPage() {
   const [mySaves, setMySaves] = useState<Set<string>>(new Set());
   const [uploadOpen, setUploadOpen] = useState(false);
   const [useBusy, setUseBusy] = useState<string | null>(null);
+  const [editTour, setEditTour] = useState<ScoredTour | null>(null);
+  const [deleteTour, setDeleteTour] = useState<ScoredTour | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasSearch = !!(start || dest);
 
