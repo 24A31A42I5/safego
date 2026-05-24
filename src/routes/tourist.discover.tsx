@@ -389,6 +389,33 @@ function DiscoverPage() {
     }
   };
 
+  const confirmDelete = async () => {
+    if (!deleteTour || !user) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("shared_tours")
+        .delete()
+        .eq("id", deleteTour.id)
+        .eq("creator_id", user.id);
+      if (error) throw error;
+      setResults((p) => p.filter((t) => t.id !== deleteTour.id));
+      setSelected((s) => (s && s.id === deleteTour.id ? null : s));
+      toast.success("Plan deleted");
+      setDeleteTour(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete plan");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const applyEditPatch = (id: string, patch: { title: string; description: string | null; tips: string | null; tags: string[] }) => {
+    setResults((p) => p.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+    setSelected((s) => (s && s.id === id ? { ...s, ...patch } : s));
+  };
+
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
