@@ -771,14 +771,18 @@ function GroupDetail() {
         </CardContent>
       </Card>
 
-      {(group?.description || (group?.images && group.images.length > 0) || group?.tips || stops.some(stopHasRichDetails)) && (
+      {stops.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <RouteIcon className="h-5 w-5 text-primary" /> Journey timeline
             </CardTitle>
             <CardDescription>
-              Detailed stop-by-stop itinerary imported from the community plan.
+              {stops.some(stopHasRichDetails) || group?.description || group?.tips
+                ? "Detailed stop-by-stop itinerary for this journey."
+                : user?.id === group?.creator_id
+                  ? "Tap Edit on any stop to add photos, descriptions, transport, tips and more."
+                  : "Stop-by-stop overview of this journey."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
