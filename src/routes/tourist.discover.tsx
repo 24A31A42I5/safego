@@ -646,10 +646,11 @@ function PhotoCarousel({ images, alt }: { images: string[]; alt: string }) {
 }
 
 function TourPostCard({
-  tour, liked, saved, onOpen, onLike, onSave, onShare, onUse,
+  tour, liked, saved, isOwner, onOpen, onLike, onSave, onShare, onUse, onEdit, onDelete,
 }: {
-  tour: ScoredTour; liked: boolean; saved: boolean;
+  tour: ScoredTour; liked: boolean; saved: boolean; isOwner: boolean;
   onOpen: () => void; onLike: () => void; onSave: () => void; onShare: () => void; onUse: () => void;
+  onEdit: () => void; onDelete: () => void;
 }) {
   return (
     <Card className="overflow-hidden">
