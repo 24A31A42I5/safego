@@ -16,7 +16,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
   Search, Compass, MapPin, Heart, MessageCircle, Bookmark, Share2,
   Clock, Route as RouteIcon, Users, Sparkles, Filter, X, Loader2,
-  ChevronLeft, ChevronRight, Plus, Upload,
+  ChevronLeft, ChevronRight, Plus, Upload, Pencil, Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { decodePolyline } from "@/lib/polyline";
@@ -24,6 +24,17 @@ import { haversine, pointsBounds } from "@/lib/geo";
 import { formatDistance, formatDuration } from "@/lib/routing";
 import { TourCommentsPanel } from "@/components/TourCommentsPanel";
 import { CreateTourPlanDialog } from "@/components/CreateTourPlanDialog";
+import { EditTourPlanDialog } from "@/components/EditTourPlanDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { TRANSPORT_OPTIONS, richStopToGroupStop, type RichStop, type TransportOption } from "@/lib/tour-stop";
 
 export const Route = createFileRoute("/tourist/discover")({
@@ -130,6 +141,9 @@ function DiscoverPage() {
   const [mySaves, setMySaves] = useState<Set<string>>(new Set());
   const [uploadOpen, setUploadOpen] = useState(false);
   const [useBusy, setUseBusy] = useState<string | null>(null);
+  const [editTour, setEditTour] = useState<ScoredTour | null>(null);
+  const [deleteTour, setDeleteTour] = useState<ScoredTour | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasSearch = !!(start || dest);
 
@@ -375,6 +389,33 @@ function DiscoverPage() {
     }
   };
 
+  const confirmDelete = async () => {
+    if (!deleteTour || !user) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("shared_tours")
+        .delete()
+        .eq("id", deleteTour.id)
+        .eq("creator_id", user.id);
+      if (error) throw error;
+      setResults((p) => p.filter((t) => t.id !== deleteTour.id));
+      setSelected((s) => (s && s.id === deleteTour.id ? null : s));
+      toast.success("Plan deleted");
+      setDeleteTour(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete plan");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const applyEditPatch = (id: string, patch: { title: string; description: string | null; tips: string | null; tags: string[] }) => {
+    setResults((p) => p.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+    setSelected((s) => (s && s.id === id ? { ...s, ...patch } : s));
+  };
+
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -497,19 +538,25 @@ function DiscoverPage() {
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
-          {results.map((t) => (
-            <TourPostCard
-              key={t.id}
-              tour={t}
-              liked={myLikes.has(t.id)}
-              saved={mySaves.has(t.id)}
-              onOpen={() => setSelected(t)}
-              onLike={() => toggleLike(t)}
-              onSave={() => toggleSave(t)}
-              onShare={() => sharePlan(t)}
-              onUse={() => useThisPlan(t)}
-            />
-          ))}
+          {results.map((t) => {
+            const isMine = !!user && t.creator_id === user.id;
+            return (
+              <TourPostCard
+                key={t.id}
+                tour={t}
+                liked={myLikes.has(t.id)}
+                saved={mySaves.has(t.id)}
+                isOwner={isMine}
+                onOpen={() => setSelected(t)}
+                onLike={() => toggleLike(t)}
+                onSave={() => toggleSave(t)}
+                onShare={() => sharePlan(t)}
+                onUse={() => useThisPlan(t)}
+                onEdit={() => setEditTour(t)}
+                onDelete={() => setDeleteTour(t)}
+              />
+            );
+          })}
         </div>
       )}
 
@@ -522,9 +569,37 @@ function DiscoverPage() {
         onShare={(t) => sharePlan(t)}
         liked={selected ? myLikes.has(selected.id) : false}
         saved={selected ? mySaves.has(selected.id) : false}
+        isOwner={!!user && !!selected && selected.creator_id === user.id}
+        onEdit={(t) => setEditTour(t)}
+        onDelete={(t) => setDeleteTour(t)}
       />
 
       <CreateTourPlanDialog open={uploadOpen} onOpenChange={setUploadOpen} onPublished={() => { setUploadOpen(false); void runSearch(); }} />
+
+      <EditTourPlanDialog
+        open={!!editTour}
+        onOpenChange={(v) => { if (!v) setEditTour(null); }}
+        tour={editTour}
+        onSaved={(patch) => { if (editTour) applyEditPatch(editTour.id, patch); }}
+      />
+
+      <AlertDialog open={!!deleteTour} onOpenChange={(v) => { if (!v && !deleting) setDeleteTour(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this plan?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove “{deleteTour?.title}” from Discover. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); void confirmDelete(); }} disabled={deleting}>
+              {deleting ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Trash2 className="mr-1 h-4 w-4" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Floating action button (mobile) */}
       <Button
@@ -571,10 +646,11 @@ function PhotoCarousel({ images, alt }: { images: string[]; alt: string }) {
 }
 
 function TourPostCard({
-  tour, liked, saved, onOpen, onLike, onSave, onShare, onUse,
+  tour, liked, saved, isOwner, onOpen, onLike, onSave, onShare, onUse, onEdit, onDelete,
 }: {
-  tour: ScoredTour; liked: boolean; saved: boolean;
+  tour: ScoredTour; liked: boolean; saved: boolean; isOwner: boolean;
   onOpen: () => void; onLike: () => void; onSave: () => void; onShare: () => void; onUse: () => void;
+  onEdit: () => void; onDelete: () => void;
 }) {
   return (
     <Card className="overflow-hidden">
@@ -640,16 +716,28 @@ function TourPostCard({
             <Share2 className="h-4 w-4" />
           </Button>
         </div>
-        <Button size="sm" onClick={onUse} className="h-7 gap-1">
-          <Sparkles className="h-3 w-3" /> Use
-        </Button>
+        <div className="flex items-center gap-1">
+          {isOwner && (
+            <>
+              <Button variant="ghost" size="sm" onClick={onEdit} className="h-7 gap-1 px-2 text-xs" aria-label="Edit plan">
+                <Pencil className="h-3.5 w-3.5" /> Edit
+              </Button>
+              <Button variant="ghost" size="sm" onClick={onDelete} className="h-7 gap-1 px-2 text-xs text-destructive hover:text-destructive" aria-label="Delete plan">
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </>
+          )}
+          <Button size="sm" onClick={onUse} className="h-7 gap-1">
+            <Sparkles className="h-3 w-3" /> Use
+          </Button>
+        </div>
       </div>
     </Card>
   );
 }
 
 function TourDetailDialog({
-  tour, onClose, onUse, onLike, onSave, onShare, liked, saved,
+  tour, onClose, onUse, onLike, onSave, onShare, liked, saved, isOwner, onEdit, onDelete,
 }: {
   tour: ScoredTour | null;
   onClose: () => void;
@@ -659,6 +747,9 @@ function TourDetailDialog({
   onShare: (t: ScoredTour) => void;
   liked: boolean;
   saved: boolean;
+  isOwner: boolean;
+  onEdit: (t: ScoredTour) => void;
+  onDelete: (t: ScoredTour) => void;
 }) {
   const markers: MapMarker[] = useMemo(() => {
     if (!tour) return [];
@@ -846,6 +937,16 @@ function TourDetailDialog({
           <Button variant="ghost" size="sm" onClick={() => onShare(tour)} aria-label="Share">
             <Share2 className="h-4 w-4" />
           </Button>
+          {isOwner && (
+            <>
+              <Button variant="ghost" size="sm" onClick={() => onEdit(tour)} className="gap-1">
+                <Pencil className="h-4 w-4" /> <span className="text-xs">Edit</span>
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => onDelete(tour)} className="gap-1 text-destructive hover:text-destructive">
+                <Trash2 className="h-4 w-4" /> <span className="text-xs">Delete</span>
+              </Button>
+            </>
+          )}
           <div className="flex-1" />
           <Button size="sm" onClick={() => onUse(tour)}>
             <Sparkles className="mr-1 h-4 w-4" /> Use this plan
