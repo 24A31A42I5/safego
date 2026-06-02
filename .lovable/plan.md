@@ -1,80 +1,57 @@
-# Community Tour Posts + Social Discover
 
-Extend the existing `shared_tours` system into a social-style travel feed with photos, likes, comments, saves, and a richer publish flow.
+This is a large multi-area request. I'll break it into focused, non-destructive phases. Working planner, routing, realtime, and Leaflet stay untouched.
 
-## Scope (what changes vs. current state)
+## Phase 1 — Welcome page hero (`src/routes/index.tsx`)
+- Add auto-rotating background slideshow (5 curated travel images, 5s interval, smooth cross-fade).
+- Layered gradient + dark overlay behind hero text for guaranteed contrast.
+- Stronger typographic hierarchy, premium feel, mobile-tuned spacing.
+- Images: stock travel photos uploaded via `lovable-assets` (mountains, beach, heritage, scenic, city).
 
-The project already has:
-- `shared_tours`, `shared_tour_ratings` tables
-- `/tourist/discover` search by start+destination with radius/tags/duration filters
-- `ShareTourDialog` to publish current group route
-- "Use This Route" via `?applyTour=<id>` flow in group planner
+## Phase 2 — Group invite + approval system (CRITICAL)
 
-What's missing (this plan adds it):
-1. Photos on tour posts
-2. Likes (replacing/augmenting ratings with simple ❤️)
-3. Comments
-4. Saves (bookmark for later)
-5. Engagement counters on cards
-6. Trending / Most-liked / Recent tabs on Discover
-7. Tour detail page with full itinerary timeline + photo gallery
-8. Richer publish dialog (photos, tips, per-stop description)
+### DB migration
+- Add `group_code TEXT UNIQUE` to `tour_groups` (backfilled from `invite_code` with `SG-XXXXX` format).
+- New table `group_join_requests` with `id, group_id, requester_id, requester_name, status (pending|approved|rejected), created_at, decided_at, decided_by`.
+- RLS:
+  - Requester can insert/select their own request.
+  - Group creator (admin) can select/update requests for groups they own.
+- GRANTs to authenticated + service_role.
 
-## Database (single migration)
+### Routes
+- New `src/routes/tourist.groups.join.$groupId.tsx` — public-ish join landing page:
+  - Fetches group preview (name, cover, member count, creator, journey preview).
+  - If already member → redirect into group.
+  - If pending request → show "Pending admin approval".
+  - Else → "Request to Join" / "Cancel" buttons.
+- New `src/routes/tourist.groups.find.tsx` — Join-by-code page (search `SG-XXXXX`, preview, request join).
+- Update `tourist.groups.index.tsx`:
+  - "Join" dialog now routes to the find-by-code page.
+  - Add "Copy invite link" helper using new `/tourist/groups/join/:id` URL.
 
-```text
-shared_tours: ADD
-  creator_avatar text null
-  images        text[] default '{}'
-  tips          text   null
-  likes_count   int    default 0
-  comments_count int   default 0
-  saves_count   int    default 0
-  -- stops jsonb already exists; allow {name,lat,lng,description,order}
+### Group detail (`tourist.groups.$groupId.tsx`)
+- Add "Join Requests" panel visible only to creator (admin).
+- Approve → insert into `tour_group_members`, mark request approved.
+- Reject → mark rejected.
+- Show group_code prominently with copy button + shareable link.
 
-shared_tour_likes(id, tour_id, user_id unique(tour_id,user_id), created_at)
-shared_tour_saves(id, tour_id, user_id unique(tour_id,user_id), created_at)
-shared_tour_comments(id, tour_id, user_id, user_name, text, created_at)
+## Phase 3 — Mobile-first + UX polish (light pass, no logic changes)
+- Audit `tourist.groups.$groupId.tsx`, `tourist.discover.tsx`, `tourist.index.tsx` for mobile overflow; stack planner/map, larger touch targets (min 44px), collapsible sections where already present.
+- Replace blank loading states with shadcn `Skeleton` blocks on Discover feed + Groups list + Group detail.
+- Friendly empty states (icon + message + CTA) for: no groups, no discover results, no comments, no join requests.
+- Consistent toast feedback for join request, copy invite, approve/reject, publish.
 
-Triggers: maintain likes_count / saves_count / comments_count on insert/delete.
-RLS:
-  likes/saves: auth read all; user insert/delete own
-  comments:   auth read all; user insert own; user update/delete own
-```
+## Phase 4 — Safety net
+- Keep ShareTourDialog working but switch its share link to `/tourist/groups/join/:id`.
+- No changes to: routing engine, Leaflet maps, realtime member_locations, planner logic, Discover ↔ Group conversion.
 
-Storage bucket `tour-photos` (public read; authenticated users write to `{user_id}/...`).
+## Technical notes
+- Group code format: `SG-` + 5 uppercase alphanumerics, generated SQL-side via trigger using `upper(substring(md5(random()::text) from 1 for 5))` with uniqueness retry.
+- Approval flow uses RLS, not edge functions — keeps stack simple.
+- All new UI uses existing semantic tokens (no hardcoded colors).
 
-## Frontend
+## Out of scope (explicit)
+- Push notifications (toasts only; in-app notification panel can come later).
+- Email invites.
+- Rewriting planner or map components.
 
-### New files
-- `src/components/TourPhotoUpload.tsx` — multi-image uploader → storage bucket, returns URLs
-- `src/components/TourPostCard.tsx` — social-style card (avatar, title, photo carousel, mini-map, stats, like/comment/save/use buttons)
-- `src/components/TourCommentsPanel.tsx` — list + add comments, realtime optional
-- `src/routes/tourist.discover.$tourId.tsx` — full detail page: gallery, route on map, itinerary timeline, comments, actions
-
-### Edited files
-- `src/components/ShareTourDialog.tsx` — add photo upload, tips textarea, per-stop description input
-- `src/routes/tourist.discover.tsx` — switch results to `TourPostCard`, add tabs: **For you / Trending / Most liked / Recent**, keep existing search+filters; sort by engagement when no search active
-- `src/lib/polyline.ts` — already fine, reused
-
-### Mechanics
-- Like/Save: optimistic toggle, single row insert/delete; trigger updates counter
-- Comments: paginated select, insert; soft-realtime via supabase channel on `shared_tour_comments`
-- Share: `navigator.share` with link `/tourist/discover/<id>`; fallback copy to clipboard
-- Use This Route: reuse existing `?applyTour=<id>` mechanism — link from card/detail navigates to a group selector or last opened group
-- Trending = `likes_count + 2*saves_count` over last 14 days; Most liked = all-time `likes_count`; Recent = `created_at desc`
-
-### Mobile-first
-- Card is single column, full-width on `<sm`
-- Sticky bottom action bar on detail page (Like / Save / Use Route)
-- Photo carousel with swipe (embla via existing `ui/carousel`)
-- Images lazy-loaded (`loading="lazy"`), polylines downsampled (already done)
-
-## Out of scope (kept for later)
-- Comment replies / comment likes (flat comments v1)
-- Push notifications
-- AI re-ordering of stops (existing AI suggest stays separate)
-- Ratings UI is retained read-only; "like" becomes the primary engagement
-
-## Approval
-Reply **approve** to proceed, or tell me what to trim (e.g. skip comments, skip saves, defer detail page).
+Once you approve, I'll start with the DB migration (Phase 2 schema) since other code depends on it, then build the UI in parallel batches.

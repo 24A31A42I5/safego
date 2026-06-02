@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      group_join_requests: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          group_id: string
+          id: string
+          message: string | null
+          requester_avatar: string | null
+          requester_id: string
+          requester_name: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          group_id: string
+          id?: string
+          message?: string | null
+          requester_avatar?: string | null
+          requester_id: string
+          requester_name: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          group_id?: string
+          id?: string
+          message?: string | null
+          requester_avatar?: string | null
+          requester_id?: string
+          requester_name?: string
+          status?: string
+        }
+        Relationships: []
+      }
       lost_reports: {
         Row: {
           created_at: string
@@ -445,6 +484,7 @@ export type Database = {
           created_at: string
           creator_id: string
           description: string | null
+          group_code: string
           id: string
           images: string[]
           invite_code: string
@@ -462,6 +502,7 @@ export type Database = {
           created_at?: string
           creator_id: string
           description?: string | null
+          group_code: string
           id?: string
           images?: string[]
           invite_code?: string
@@ -479,6 +520,7 @@ export type Database = {
           created_at?: string
           creator_id?: string
           description?: string | null
+          group_code?: string
           id?: string
           images?: string[]
           invite_code?: string
