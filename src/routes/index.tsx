@@ -1,9 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
-import heroBg from "@/assets/hero-bg.avif";
+import heroMountains from "@/assets/hero-mountains.jpg";
+import heroBeach from "@/assets/hero-beach.jpg";
+import heroHeritage from "@/assets/hero-heritage.jpg";
+import heroCity from "@/assets/hero-city.jpg";
 import {
   Shield,
   MapPin,
@@ -37,6 +40,39 @@ export const Route = createFileRoute("/")({
   }),
 });
 
+const SLIDES = [
+  { src: heroMountains, alt: "Mountain landscape at golden hour" },
+  { src: heroBeach, alt: "Tropical beach with palm trees" },
+  { src: heroHeritage, alt: "Heritage temple at sunset" },
+  { src: heroCity, alt: "City skyline at blue hour" },
+];
+
+function HeroSlideshow() {
+  const [index, setIndex] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setIndex((i) => (i + 1) % SLIDES.length), 5500);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <div className="absolute inset-0 -z-10 overflow-hidden">
+      {SLIDES.map((s, i) => (
+        <img
+          key={s.src}
+          src={s.src}
+          alt={s.alt}
+          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[1500ms] ease-in-out ${
+            i === index ? "opacity-100" : "opacity-0"
+          }`}
+          loading={i === 0 ? "eager" : "lazy"}
+        />
+      ))}
+      {/* Readability overlays */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/55 to-black/80" />
+      <div className="absolute inset-0 bg-gradient-to-tr from-primary/40 via-transparent to-transparent mix-blend-multiply" />
+    </div>
+  );
+}
+
 function Landing() {
   const { role, loading } = useAuth();
   const navigate = useNavigate();
@@ -49,7 +85,7 @@ function Landing() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur-md">
+      <header className="sticky top-0 z-20 border-b bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <Logo />
           <nav className="hidden items-center gap-6 text-sm md:flex">
@@ -75,22 +111,21 @@ function Landing() {
 
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <div
-          className="absolute inset-0 -z-10 bg-cover bg-center"
-          style={{ backgroundImage: `url(${heroBg})` }}
-        />
-        <div className="absolute inset-0 -z-10 bg-gradient-to-br from-primary/80 via-primary/60 to-black/70" />
-        <div className="mx-auto max-w-6xl px-4 py-24 text-center text-white">
-          <h1 className="mx-auto max-w-3xl text-4xl font-bold tracking-tight md:text-6xl">
-            Your Guide to Safer Travels
+        <HeroSlideshow />
+        <div className="relative mx-auto max-w-6xl px-4 py-28 text-center text-white md:py-36">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 px-3 py-1 text-xs font-medium uppercase tracking-wider backdrop-blur">
+            <Shield className="h-3 w-3" /> Travel safer, together
+          </span>
+          <h1 className="mx-auto mt-5 max-w-3xl text-4xl font-bold tracking-tight drop-shadow-[0_2px_18px_rgba(0,0,0,0.6)] md:text-6xl">
+            Your Guide to <span className="text-primary-foreground/95 underline decoration-white/40 underline-offset-8">Safer Travels</span>
           </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-base text-white/85 md:text-lg">
+          <p className="mx-auto mt-5 max-w-2xl text-base text-white/90 drop-shadow-md md:text-lg">
             Navigate new places with confidence. SafeGo provides a secure Digital ID,
-            real-time safety zones, and instant emergency alerts.
+            real-time safety zones, group tours, and instant emergency alerts.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link to="/signup">
-              <Button size="lg" className="bg-white text-primary hover:bg-white/90">
+              <Button size="lg" className="bg-white text-primary shadow-xl hover:bg-white/90">
                 Create Your Digital ID
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -99,9 +134,9 @@ function Landing() {
               <Button
                 size="lg"
                 variant="outline"
-                className="border-white/40 bg-white/10 text-white hover:bg-white/20"
+                className="border-white/50 bg-white/10 text-white backdrop-blur hover:bg-white/20"
               >
-                Learn more about SafeGo features
+                Explore features
               </Button>
             </a>
           </div>
@@ -147,8 +182,8 @@ function Landing() {
             },
             {
               icon: Users,
-              title: "Multi-Agency Coordination",
-              desc: "Seamlessly connect with police, medical, and tourist services through a single, unified platform.",
+              title: "Group Tours & Live Tracking",
+              desc: "Invite friends with a code, get admin approval, and track each other live during shared trips.",
             },
           ].map((f) => (
             <div
