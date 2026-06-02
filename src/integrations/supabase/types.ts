@@ -502,7 +502,7 @@ export type Database = {
           created_at?: string
           creator_id: string
           description?: string | null
-          group_code: string
+          group_code?: string
           id?: string
           images?: string[]
           invite_code?: string
