@@ -33,7 +33,8 @@ import { TRANSPORT_OPTIONS, parseGroupJourneyStop, richStopToGroupStop, type Gro
 
 import { ShareTourDialog, type ShareTourPayload } from "@/components/ShareTourDialog";
 import { EditStopDialog } from "@/components/EditStopDialog";
-import { Share2, Pencil } from "lucide-react";
+import { GroupJoinRequestsPanel } from "@/components/GroupJoinRequestsPanel";
+import { Share2, Pencil, Link2 } from "lucide-react";
 
 export const Route = createFileRoute("/tourist/groups/$groupId")({
   head: () => ({
@@ -57,6 +58,7 @@ interface GroupRow {
   id: string;
   name: string;
   invite_code: string;
+  group_code: string;
   creator_id: string;
   waypoints: unknown;
   description: string | null;
@@ -335,9 +337,14 @@ function GroupDetail() {
 
   const copyInvite = () => {
     if (!group) return;
-    const link = `${window.location.origin}/tourist/groups?join=${group.invite_code}`;
+    const link = `${window.location.origin}/tourist/groups/join/${group.id}`;
     navigator.clipboard.writeText(link);
     toast.success("Invite link copied!");
+  };
+  const copyCode = () => {
+    if (!group) return;
+    navigator.clipboard.writeText(group.group_code);
+    toast.success(`Code ${group.group_code} copied!`);
   };
 
   // ---- Stop management ----
@@ -587,25 +594,40 @@ function GroupDetail() {
             <Users className="h-5 w-5" /> {group?.name ?? "Loading…"}
           </CardTitle>
           <CardDescription>
-            Code: <span className="font-mono">{group?.invite_code}</span> · {members.length}{" "}
-            member{members.length === 1 ? "" : "s"}
+            {members.length} member{members.length === 1 ? "" : "s"}
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={copyInvite}>
-            <Copy className="mr-1 h-4 w-4" /> Copy invite link
-          </Button>
-          {members.map((m, i) => (
-            <Badge
-              key={m.id}
-              variant="secondary"
-              style={{ borderLeft: `4px solid ${COLORS[i % COLORS.length]}` }}
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={copyCode}
+              className="inline-flex items-center gap-1.5 rounded-md border bg-muted/40 px-2.5 py-1 font-mono text-xs hover:bg-muted"
+              title="Copy code"
             >
-              {m.full_name}
-            </Badge>
-          ))}
+              <Copy className="h-3 w-3" /> {group?.group_code ?? "…"}
+            </button>
+            <Button variant="outline" size="sm" onClick={copyInvite}>
+              <Link2 className="mr-1 h-4 w-4" /> Copy invite link
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {members.map((m, i) => (
+              <Badge
+                key={m.id}
+                variant="secondary"
+                style={{ borderLeft: `4px solid ${COLORS[i % COLORS.length]}` }}
+              >
+                {m.full_name}
+              </Badge>
+            ))}
+          </div>
         </CardContent>
       </Card>
+
+      {group && user && group.creator_id === user.id && (
+        <GroupJoinRequestsPanel groupId={group.id} isAdmin />
+      )}
 
       <Card>
         <CardHeader>
