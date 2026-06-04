@@ -112,20 +112,33 @@ function Landing() {
       {/* Hero */}
       <section className="relative overflow-hidden">
         <HeroSlideshow />
-        <div className="relative mx-auto max-w-6xl px-4 py-28 text-center text-white md:py-36">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 px-3 py-1 text-xs font-medium uppercase tracking-wider backdrop-blur">
+        <div
+          className="relative mx-auto max-w-6xl px-4 py-28 text-center text-black md:py-36"
+          style={{
+            textShadow:
+              "-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000",
+          }}
+        >
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 px-3 py-1 text-xs font-medium uppercase tracking-wider text-black backdrop-blur">
             <Shield className="h-3 w-3" /> Travel safer, together
           </span>
-          <h1 className="mx-auto mt-5 max-w-3xl text-4xl font-bold tracking-tight drop-shadow-[0_2px_18px_rgba(0,0,0,0.6)] md:text-6xl">
-            Your Guide to <span className="text-primary-foreground/95 underline decoration-white/40 underline-offset-8">Safer Travels</span>
+          <h1 className="mx-auto mt-5 max-w-3xl text-4xl font-bold tracking-tight text-black md:text-6xl">
+            Your Guide to <span className="text-black underline decoration-black/40 underline-offset-8">Safer Travels</span>
           </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-base text-white/90 drop-shadow-md md:text-lg">
+          <p className="mx-auto mt-5 max-w-2xl text-base text-black md:text-lg">
             Navigate new places with confidence. SafeGo provides a secure Digital ID,
             real-time safety zones, group tours, and instant emergency alerts.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link to="/signup">
-              <Button size="lg" className="bg-white text-primary shadow-xl hover:bg-white/90">
+              <Button
+                size="lg"
+                className="bg-white text-black shadow-xl hover:bg-white/90"
+                style={{
+                  textShadow:
+                    "-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000",
+                }}
+              >
                 Create Your Digital ID
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -134,7 +147,11 @@ function Landing() {
               <Button
                 size="lg"
                 variant="outline"
-                className="border-white/50 bg-white/10 text-white backdrop-blur hover:bg-white/20"
+                className="border-black/50 bg-white/10 text-black backdrop-blur hover:bg-white/20"
+                style={{
+                  textShadow:
+                    "-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000",
+                }}
               >
                 Explore features
               </Button>
