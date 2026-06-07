@@ -20,6 +20,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { pointInPolygon, polygonCentroid, haversine } from "@/lib/geo";
 import { fetchRoute, formatDistance, formatDuration, type RouteResult } from "@/lib/routing";
 import { toast } from "sonner";
+import { Link } from "@tanstack/react-router";
+import { Badge } from "@/components/ui/badge";
 import {
   Siren,
   UserSearch,
@@ -30,6 +32,8 @@ import {
   AlertTriangle,
   Navigation,
   MapPin,
+  Users,
+  ArrowRight,
 } from "lucide-react";
 
 export const Route = createFileRoute("/tourist/")({
