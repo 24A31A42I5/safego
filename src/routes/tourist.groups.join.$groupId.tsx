@@ -53,25 +53,37 @@ function JoinGroupPage() {
     }
     (async () => {
       setLoading(true);
-      const { data: g } = await supabase
-        .from("tour_groups")
-        .select("id,name,description,cover_image,images,group_code,creator_id,tags,route_distance_m,route_duration_s,waypoints")
-        .eq("id", groupId)
-        .maybeSingle();
+      const { data: previewRows } = await supabase.rpc("get_group_preview", { _group_id: groupId });
+      const g = Array.isArray(previewRows) ? previewRows[0] : previewRows;
       if (!g) {
         toast.error("Group not found");
         navigate({ to: "/tourist/groups" });
         return;
       }
-      setGroup(g);
+      setGroup({
+        id: g.id,
+        name: g.name,
+        description: g.description,
+        cover_image: g.cover_image,
+        images: g.images ?? [],
+        group_code: g.group_code,
+        creator_id: g.creator_id,
+        tags: g.tags ?? [],
+        route_distance_m: g.route_distance_m ?? 0,
+        route_duration_s: g.route_duration_s ?? 0,
+        waypoints: g.waypoints,
+      });
+      setMemberCount(g.member_count ?? 0);
+      setCreatorName(g.creator_name ?? "Group admin");
 
-      const [{ data: members }, { data: creator }] = await Promise.all([
-        supabase.from("tour_group_members").select("user_id").eq("group_id", g.id),
-        supabase.from("profiles").select("full_name").eq("id", g.creator_id).maybeSingle(),
-      ]);
-      setMemberCount(members?.length ?? 0);
-      setCreatorName(creator?.full_name ?? "Group admin");
-      setIsMember(!!members?.some((m) => m.user_id === user.id));
+      // Membership check (succeeds only if the user is actually a member)
+      const { data: membership } = await supabase
+        .from("tour_group_members")
+        .select("user_id")
+        .eq("group_id", g.id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      setIsMember(!!membership);
 
       const { data: req } = await supabase
         .from("group_join_requests")
