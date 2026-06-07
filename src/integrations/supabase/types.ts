@@ -488,6 +488,8 @@ export type Database = {
           id: string
           images: string[]
           invite_code: string
+          is_live: boolean
+          live_started_at: string | null
           name: string
           route_distance_m: number
           route_duration_s: number
@@ -506,6 +508,8 @@ export type Database = {
           id?: string
           images?: string[]
           invite_code?: string
+          is_live?: boolean
+          live_started_at?: string | null
           name: string
           route_distance_m?: number
           route_duration_s?: number
@@ -524,6 +528,8 @@ export type Database = {
           id?: string
           images?: string[]
           invite_code?: string
+          is_live?: boolean
+          live_started_at?: string | null
           name?: string
           route_distance_m?: number
           route_duration_s?: number
