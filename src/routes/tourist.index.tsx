@@ -425,6 +425,7 @@ interface ActiveTour {
   group_code: string;
   cover_image: string | null;
   member_count: number;
+  is_live: boolean;
 }
 
 function ActiveTourCard() {
@@ -434,49 +435,71 @@ function ActiveTourCard() {
 
   useEffect(() => {
     if (!user) return;
-    (async () => {
+
+    const pick = async () => {
       const { data: mems } = await supabase
         .from("tour_group_members")
         .select("group_id, joined_at")
         .eq("user_id", user.id)
-        .order("joined_at", { ascending: false })
-        .limit(1);
-      const gid = mems?.[0]?.group_id;
-      if (!gid) {
+        .order("joined_at", { ascending: false });
+      const ids = (mems ?? []).map((m) => m.group_id);
+      if (ids.length === 0) {
+        setTour(null);
         setLoading(false);
         return;
       }
-      const { data: g } = await supabase
+      const { data: gs } = await supabase
         .from("tour_groups")
-        .select("id, name, group_code, cover_image")
-        .eq("id", gid)
-        .maybeSingle();
-      if (!g) {
+        .select("id, name, group_code, cover_image, is_live, live_started_at")
+        .in("id", ids);
+      const groups = gs ?? [];
+      // Prefer a live tour; fall back to the most recently joined.
+      const live = groups.find((g) => (g as { is_live?: boolean }).is_live);
+      const chosen = live ?? groups.find((g) => g.id === ids[0]) ?? groups[0];
+      if (!chosen) {
+        setTour(null);
         setLoading(false);
         return;
       }
       const { count } = await supabase
         .from("tour_group_members")
         .select("*", { count: "exact", head: true })
-        .eq("group_id", gid);
+        .eq("group_id", chosen.id);
       setTour({
-        id: g.id,
-        name: g.name,
-        group_code: g.group_code,
-        cover_image: g.cover_image,
+        id: chosen.id,
+        name: chosen.name,
+        group_code: chosen.group_code,
+        cover_image: chosen.cover_image,
         member_count: count ?? 0,
+        is_live: Boolean((chosen as { is_live?: boolean }).is_live),
       });
       setLoading(false);
-    })();
+    };
+
+    pick();
+    const ch = supabase
+      .channel("dashboard-active-tour")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "tour_groups" }, () => pick())
+      .on("postgres_changes", { event: "*", schema: "public", table: "tour_group_members", filter: `user_id=eq.${user.id}` }, () => pick())
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [user]);
 
   if (loading || !tour) return null;
 
   return (
-    <Card>
+    <Card className={tour.is_live ? "border-primary/60 ring-1 ring-primary/30" : undefined}>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Users className="h-4 w-4" /> Current tour
+          <Users className="h-4 w-4" />
+          {tour.is_live ? "Live tour" : "Current tour"}
+          {tour.is_live && (
+            <Badge variant="default" className="ml-1 gap-1">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" /> LIVE
+            </Badge>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent>
