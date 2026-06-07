@@ -30,12 +30,7 @@ function FindGroupPage() {
       return;
     }
     setBusy(true);
-    // Accept either the SG-XXXXX code or the legacy 8-char invite_code
-    const { data, error } = await supabase
-      .from("tour_groups")
-      .select("id, name, group_code, invite_code")
-      .or(`group_code.eq.${normalized},invite_code.eq.${normalized}`)
-      .maybeSingle();
+    const { data, error } = await supabase.rpc("find_group_id_by_code", { _code: normalized });
     setBusy(false);
     if (error) {
       toast.error(error.message);
@@ -45,7 +40,7 @@ function FindGroupPage() {
       toast.error("No group found with that code");
       return;
     }
-    navigate({ to: "/tourist/groups/join/$groupId", params: { groupId: data.id } });
+    navigate({ to: "/tourist/groups/join/$groupId", params: { groupId: data as string } });
   };
 
   return (

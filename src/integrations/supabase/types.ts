@@ -585,6 +585,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      find_group_id_by_code: { Args: { _code: string }; Returns: string }
+      get_group_preview: {
+        Args: { _group_id: string }
+        Returns: {
+          cover_image: string
+          creator_id: string
+          creator_name: string
+          description: string
+          group_code: string
+          id: string
+          images: string[]
+          member_count: number
+          name: string
+          route_distance_m: number
+          route_duration_s: number
+          tags: string[]
+          waypoints: Json
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
