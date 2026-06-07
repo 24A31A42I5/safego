@@ -46,6 +46,12 @@ export const Route = createRootRoute({
       },
       { property: "og:url", content: "/" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "SafeGo — Tourist Safety Platform" },
+      { name: "description", content: "SafeGo provides real-time safety monitoring and emergency assistance for tourists and departments." },
+      { property: "og:description", content: "SafeGo provides real-time safety monitoring and emergency assistance for tourists and departments." },
+      { name: "twitter:description", content: "SafeGo provides real-time safety monitoring and emergency assistance for tourists and departments." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/0661e18c-60b1-46a6-a64a-23e7536e988b/id-preview-415016d0--26436944-6a2d-4bf2-823e-974494b3df3d.lovable.app-1780384056722.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/0661e18c-60b1-46a6-a64a-23e7536e988b/id-preview-415016d0--26436944-6a2d-4bf2-823e-974494b3df3d.lovable.app-1780384056722.png" },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
     scripts: [
