@@ -593,7 +593,7 @@ function GroupDetail() {
     return pointsBounds(allPoints.length ? allPoints : waypoints);
   }, [isTourStarted, locations, route?.coordinates, waypoints]);
 
-  const startTour = () => {
+  const startTour = async () => {
     if (waypoints.length < 2) {
       toast.error("Plan a route (start + destination) before starting the tour");
       return;
@@ -604,12 +604,24 @@ function GroupDetail() {
     if (!confirmed) return;
     setClickToAdd(false);
     setIsTourStarted(true);
+    if (group && user && group.creator_id === user.id) {
+      await supabase
+        .from("tour_groups")
+        .update({ is_live: true, live_started_at: new Date().toISOString() })
+        .eq("id", group.id);
+    }
     toast.success("Live Mode started — route planning is locked");
   };
 
-  const endTour = () => {
+  const endTour = async () => {
     setLocations([]);
     setIsTourStarted(false);
+    if (group && user && group.creator_id === user.id) {
+      await supabase
+        .from("tour_groups")
+        .update({ is_live: false })
+        .eq("id", group.id);
+    }
     toast.success("Tour ended — planning controls unlocked");
   };
 
