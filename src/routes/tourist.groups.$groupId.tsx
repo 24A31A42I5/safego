@@ -125,9 +125,10 @@ function GroupDetail() {
 
   const waypoints = useMemo(() => stops.map((s) => s.pos), [stops]);
 
-  // Load group + members once. Planning mode must not subscribe to live location changes.
+  // Load group + members. Subscribe to membership and group changes so
+  // approvals and live-mode toggles refresh the UI immediately.
   useEffect(() => {
-    const load = async () => {
+    const loadGroup = async () => {
       const { data: g } = await supabase
         .from("tour_groups")
         .select("*")
@@ -137,7 +138,7 @@ function GroupDetail() {
         toast.error("Group not found");
         return;
       }
-      setGroup(g);
+      setGroup(g as GroupRow);
       const wp = Array.isArray(g.waypoints) ? (g.waypoints as unknown[]) : [];
       const parsed: Stop[] = wp.map((w, i) => parseGroupJourneyStop(w, i));
       setStops(parsed);
@@ -149,21 +150,47 @@ function GroupDetail() {
         setRoute(null);
         setRouteLockedToStored(false);
       }
+      if ((g as { is_live?: boolean }).is_live) {
+        setIsTourStarted(true);
+      }
+    };
 
+    const loadMembers = async () => {
       const { data: ms } = await supabase
         .from("tour_group_members")
         .select("user_id")
         .eq("group_id", groupId);
       const userIds = ms?.map((m) => m.user_id) ?? [];
-      if (userIds.length) {
-        const { data: ps } = await supabase
-          .from("profiles")
-          .select("id, full_name")
-          .in("id", userIds);
-        setMembers(ps ?? []);
+      if (userIds.length === 0) {
+        setMembers([]);
+        return;
       }
+      const { data: ps } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", userIds);
+      setMembers(ps ?? []);
     };
-    load();
+
+    loadGroup();
+    loadMembers();
+
+    const ch = supabase
+      .channel(`group-meta-${groupId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tour_group_members", filter: `group_id=eq.${groupId}` },
+        () => loadMembers(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "tour_groups", filter: `id=eq.${groupId}` },
+        () => loadGroup(),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [groupId]);
 
   // Apply a shared community tour when navigated with ?applyTour=<id>.
@@ -566,7 +593,7 @@ function GroupDetail() {
     return pointsBounds(allPoints.length ? allPoints : waypoints);
   }, [isTourStarted, locations, route?.coordinates, waypoints]);
 
-  const startTour = () => {
+  const startTour = async () => {
     if (waypoints.length < 2) {
       toast.error("Plan a route (start + destination) before starting the tour");
       return;
@@ -577,12 +604,24 @@ function GroupDetail() {
     if (!confirmed) return;
     setClickToAdd(false);
     setIsTourStarted(true);
+    if (group && user && group.creator_id === user.id) {
+      await supabase
+        .from("tour_groups")
+        .update({ is_live: true, live_started_at: new Date().toISOString() })
+        .eq("id", group.id);
+    }
     toast.success("Live Mode started — route planning is locked");
   };
 
-  const endTour = () => {
+  const endTour = async () => {
     setLocations([]);
     setIsTourStarted(false);
+    if (group && user && group.creator_id === user.id) {
+      await supabase
+        .from("tour_groups")
+        .update({ is_live: false })
+        .eq("id", group.id);
+    }
     toast.success("Tour ended — planning controls unlocked");
   };
 
