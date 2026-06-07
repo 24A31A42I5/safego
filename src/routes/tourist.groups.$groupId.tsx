@@ -320,6 +320,12 @@ function GroupDetail() {
             ? `🚨 ${otherName} is ${dKm.toFixed(1)} km away — critical separation!`
             : `⚠ ${otherName} is ${dKm.toFixed(1)} km away from the group`;
         toast(msg, { duration: 6000 });
+        // Vibration alert (mobile devices)
+        if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+          try {
+            navigator.vibrate(level === "critical" ? [300, 100, 300, 100, 300] : [200, 100, 200]);
+          } catch { /* noop */ }
+        }
         supabase.from("separation_alerts").insert({
           group_id: groupId,
           user_id: other.user_id,
