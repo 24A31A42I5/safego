@@ -231,6 +231,9 @@ function TouristDashboard() {
         </CardContent>
       </Card>
 
+      <ActiveTourCard />
+      <SeparationAlertsCard />
+
       <Card>
         <CardHeader>
           <CardTitle>Live Safety Map</CardTitle>
