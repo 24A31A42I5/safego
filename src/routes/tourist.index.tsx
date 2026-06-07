@@ -418,3 +418,162 @@ function LostReportDialog() {
     </Dialog>
   );
 }
+
+interface ActiveTour {
+  id: string;
+  name: string;
+  group_code: string;
+  cover_image: string | null;
+  member_count: number;
+}
+
+function ActiveTourCard() {
+  const { user } = useAuth();
+  const [tour, setTour] = useState<ActiveTour | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data: mems } = await supabase
+        .from("tour_group_members")
+        .select("group_id, joined_at")
+        .eq("user_id", user.id)
+        .order("joined_at", { ascending: false })
+        .limit(1);
+      const gid = mems?.[0]?.group_id;
+      if (!gid) {
+        setLoading(false);
+        return;
+      }
+      const { data: g } = await supabase
+        .from("tour_groups")
+        .select("id, name, group_code, cover_image")
+        .eq("id", gid)
+        .maybeSingle();
+      if (!g) {
+        setLoading(false);
+        return;
+      }
+      const { count } = await supabase
+        .from("tour_group_members")
+        .select("*", { count: "exact", head: true })
+        .eq("group_id", gid);
+      setTour({
+        id: g.id,
+        name: g.name,
+        group_code: g.group_code,
+        cover_image: g.cover_image,
+        member_count: count ?? 0,
+      });
+      setLoading(false);
+    })();
+  }, [user]);
+
+  if (loading || !tour) return null;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Users className="h-4 w-4" /> Current tour
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Link
+          to="/tourist/groups/$groupId"
+          params={{ groupId: tour.id }}
+          className="flex items-center gap-3 rounded-md border bg-muted/30 p-3 hover:bg-muted/60"
+        >
+          {tour.cover_image ? (
+            <img src={tour.cover_image} alt="" className="h-14 w-14 rounded-md object-cover" />
+          ) : (
+            <div className="flex h-14 w-14 items-center justify-center rounded-md bg-primary/10">
+              <MapPin className="h-6 w-6 text-primary" />
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-semibold">{tour.name}</p>
+            <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+              <Badge variant="secondary" className="font-mono">{tour.group_code}</Badge>
+              <span>{tour.member_count} members</span>
+            </div>
+          </div>
+          <ArrowRight className="h-4 w-4 text-muted-foreground" />
+        </Link>
+      </CardContent>
+    </Card>
+  );
+}
+
+interface SepAlert {
+  id: string;
+  user_name: string;
+  severity: string;
+  distance_km: number;
+  group_id: string;
+  created_at: string;
+}
+
+function SeparationAlertsCard() {
+  const { user } = useAuth();
+  const [alerts, setAlerts] = useState<SepAlert[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+    const load = async () => {
+      const { data } = await supabase
+        .from("separation_alerts")
+        .select("id, user_name, severity, distance_km, group_id, created_at")
+        .order("created_at", { ascending: false })
+        .limit(5);
+      setAlerts((data as SepAlert[]) ?? []);
+      setLoading(false);
+    };
+    load();
+    const ch = supabase
+      .channel("dashboard-sep-alerts")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "separation_alerts" }, () => load())
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [user]);
+
+  if (loading) return null;
+  if (alerts.length === 0) return null;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <AlertTriangle className="h-4 w-4 text-destructive" /> Separation alerts
+        </CardTitle>
+        <CardDescription>Recent group separation warnings</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {alerts.map((a) => (
+          <Link
+            key={a.id}
+            to="/tourist/groups/$groupId"
+            params={{ groupId: a.group_id }}
+            className="flex items-center justify-between gap-2 rounded-md border bg-muted/30 p-2.5 hover:bg-muted/60"
+          >
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium">
+                {a.severity === "critical" ? "🚨" : "⚠"} {a.user_name}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {a.distance_km.toFixed(1)} km away · {new Date(a.created_at).toLocaleTimeString()}
+              </p>
+            </div>
+            <Badge variant={a.severity === "critical" ? "destructive" : "secondary"} className="shrink-0 capitalize">
+              {a.severity}
+            </Badge>
+          </Link>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
