@@ -80,9 +80,9 @@ function Signup() {
         data: {
           full_name: form.full_name,
           phone: form.phone,
-          role,
-          emergency_contact: role === "tourist" ? form.emergency_contact : null,
-          department_type: role === "department" ? form.department_type : null,
+          // Role is enforced server-side by the handle_new_user trigger.
+          // Department/authority accounts must be provisioned by an admin.
+          emergency_contact: form.emergency_contact,
           digital_id: newId,
         },
       },
@@ -124,33 +124,25 @@ function Signup() {
         {step === 1 && (
           <Card>
             <CardHeader>
-              <CardTitle>Choose Your Role</CardTitle>
-              <CardDescription>How will you be using SafeGo?</CardDescription>
+              <CardTitle>Create your SafeGo account</CardTitle>
+              <CardDescription>
+                Sign up as a tourist to generate your Digital ID and travel safely.
+                Department/authority accounts are provisioned by an admin — please
+                contact support if you need one.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              {(["tourist", "department"] as Role[]).map((r) => (
-                <button
-                  key={r}
-                  onClick={() => setRole(r)}
-                  className={`flex w-full items-center gap-4 rounded-lg border-2 p-4 text-left transition-colors ${
-                    role === r
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/40"
-                  }`}
-                >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    {r === "tourist" ? <User className="h-5 w-5" /> : <Building2 className="h-5 w-5" />}
+              <div className="flex items-center gap-4 rounded-lg border-2 border-primary bg-primary/5 p-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <User className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="font-semibold">Tourist</div>
+                  <div className="text-sm text-muted-foreground">
+                    I'm traveling and want to stay safe
                   </div>
-                  <div>
-                    <div className="font-semibold capitalize">{r}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {r === "tourist"
-                        ? "I'm traveling and want to stay safe"
-                        : "I'm a safety/police authority"}
-                    </div>
-                  </div>
-                </button>
-              ))}
+                </div>
+              </div>
               <Button onClick={() => setStep(2)} className="w-full">
                 Continue <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -168,14 +160,12 @@ function Signup() {
           <Card>
             <CardHeader>
               <CardTitle>Your Details</CardTitle>
-              <CardDescription>
-                Signing up as a <span className="capitalize">{role}</span>
-              </CardDescription>
+              <CardDescription>Signing up as a tourist</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-3">
                 <div className="space-y-1.5">
-                  <Label>{role === "department" ? "Department / Officer Name" : "Full Name"}</Label>
+                  <Label>Full Name</Label>
                   <Input
                     value={form.full_name}
                     onChange={(e) => setForm({ ...form, full_name: e.target.value })}
@@ -208,34 +198,16 @@ function Signup() {
                     required
                   />
                 </div>
-                {role === "tourist" ? (
-                  <div className="space-y-1.5">
-                    <Label>Emergency Contact</Label>
-                    <Input
-                      value={form.emergency_contact}
-                      onChange={(e) =>
-                        setForm({ ...form, emergency_contact: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                ) : (
-                  <div className="space-y-1.5">
-                    <Label>Department Type</Label>
-                    <select
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      value={form.department_type}
-                      onChange={(e) =>
-                        setForm({ ...form, department_type: e.target.value })
-                      }
-                    >
-                      <option>Tourist Police</option>
-                      <option>Local Police</option>
-                      <option>Ambulance</option>
-                      <option>Tourism Authority</option>
-                    </select>
-                  </div>
-                )}
+                <div className="space-y-1.5">
+                  <Label>Emergency Contact</Label>
+                  <Input
+                    value={form.emergency_contact}
+                    onChange={(e) =>
+                      setForm({ ...form, emergency_contact: e.target.value })
+                    }
+                    required
+                  />
+                </div>
                 <div className="flex gap-2">
                   <Button type="button" variant="outline" onClick={() => setStep(1)}>
                     Back
@@ -266,9 +238,7 @@ function Signup() {
                 <p className="mt-2 font-mono text-sm font-bold">{digitalId}</p>
               </div>
               <Button
-                onClick={() =>
-                  navigate({ to: role === "tourist" ? "/tourist" : "/department" })
-                }
+                onClick={() => navigate({ to: "/tourist" })}
                 className="w-full"
               >
                 Go to Dashboard <ArrowRight className="ml-2 h-4 w-4" />
@@ -280,3 +250,4 @@ function Signup() {
     </div>
   );
 }
+
