@@ -6,6 +6,8 @@ import { Card } from "@/components/ui/card";
 import { MessageCircle, X, Send, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -37,15 +39,24 @@ export function ChatWidget() {
     setLoading(true);
 
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) {
+        toast.error("Please sign in to use the safety assistant.");
+        setLoading(false);
+        return;
+      }
       const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/safety-chat`;
       const resp = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ messages: [...messages, userMsg] }),
       });
+
 
       if (!resp.ok) {
         if (resp.status === 429) {
