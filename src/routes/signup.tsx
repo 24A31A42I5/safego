@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
 import { generateDigitalId } from "@/lib/digital-id";
-import { User, Building2, ArrowRight, Check } from "lucide-react";
+import { User, ArrowRight, Check } from "lucide-react";
 
 export const Route = createFileRoute("/signup")({
   head: () => ({
@@ -26,29 +26,17 @@ export const Route = createFileRoute("/signup")({
   component: Signup,
 });
 
-type Role = "tourist" | "department";
-
-const baseSchema = z.object({
+const touristSchema = z.object({
   full_name: z.string().trim().min(1, "Name required").max(100),
   email: z.string().trim().email("Invalid email").max(255),
   password: z.string().min(1, "Password required").max(128),
   phone: z.string().trim().min(1).max(30),
-});
-
-const touristSchema = baseSchema.extend({
   emergency_contact: z.string().trim().min(1).max(30),
-});
-
-const deptSchema = baseSchema.extend({
-  department_type: z.string().trim().min(1).max(60),
 });
 
 function Signup() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
-  // Self-signup is restricted to tourists. Department/authority accounts
-  // are provisioned by an admin to prevent privilege escalation.
-  const role: Role = "tourist";
   const [digitalId, setDigitalId] = useState("");
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
@@ -57,20 +45,19 @@ function Signup() {
     password: "",
     phone: "",
     emergency_contact: "",
-    department_type: "Tourist Police",
   });
-
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const schema = role === "tourist" ? touristSchema : deptSchema;
-    const parsed = schema.safeParse(form);
+    const parsed = touristSchema.safeParse(form);
     if (!parsed.success) {
       toast.error(parsed.error.issues[0].message);
       return;
     }
     setLoading(true);
-    const newId = generateDigitalId(role);
+    const newId = generateDigitalId("tourist");
+
+
 
     const { error } = await supabase.auth.signUp({
       email: form.email,
