@@ -46,7 +46,9 @@ const deptSchema = baseSchema.extend({
 function Signup() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
-  const [role, setRole] = useState<Role>("tourist");
+  // Self-signup is restricted to tourists. Department/authority accounts
+  // are provisioned by an admin to prevent privilege escalation.
+  const role: Role = "tourist";
   const [digitalId, setDigitalId] = useState("");
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
@@ -57,6 +59,7 @@ function Signup() {
     emergency_contact: "",
     department_type: "Tourist Police",
   });
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
