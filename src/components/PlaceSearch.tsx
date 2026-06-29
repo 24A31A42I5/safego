@@ -59,15 +59,22 @@ export function PlaceSearch({ placeholder, onSelect, initialValue = "" }: Props)
       ctrlRef.current?.abort();
       return;
     }
+    // Show cached results instantly (no spinner, no flicker) while we
+    // optionally refresh in the background.
+    const cached = peekCachedPlaces(trimmed, 6);
+    if (cached && cached.length > 0) {
+      setResults(cached);
+      setLoading(false);
+    }
     // Tight debounce — 180ms feels near-instant while still coalescing keystrokes.
     ctrlRef.current?.abort();
     const ctrl = new AbortController();
     ctrlRef.current = ctrl;
-    setLoading(true);
+    if (!cached) setLoading(true);
     const t = setTimeout(async () => {
       const r = await searchPlaces(trimmed, ctrl.signal, 6);
       if (!ctrl.signal.aborted) {
-        setResults(r);
+        if (r.length > 0 || !cached) setResults(r);
         setLoading(false);
       }
     }, 180);
