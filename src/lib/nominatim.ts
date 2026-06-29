@@ -14,6 +14,48 @@ export interface NominatimPlace {
 
 const BASE = "https://nominatim.openstreetmap.org";
 
+// In-memory cache for search queries. Drastically reduces perceived latency
+// and avoids hammering the free Nominatim endpoint while users type.
+interface CacheEntry { ts: number; results: NominatimPlace[] }
+const searchCache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const CACHE_MAX = 200;
+const inflight = new Map<string, Promise<NominatimPlace[]>>();
+
+function cacheGet(key: string): NominatimPlace[] | null {
+  const hit = searchCache.get(key);
+  if (!hit) return null;
+  if (Date.now() - hit.ts > CACHE_TTL_MS) {
+    searchCache.delete(key);
+    return null;
+  }
+  return hit.results;
+}
+
+function cacheSet(key: string, results: NominatimPlace[]) {
+  if (searchCache.size >= CACHE_MAX) {
+    const firstKey = searchCache.keys().next().value;
+    if (firstKey) searchCache.delete(firstKey);
+  }
+  searchCache.set(key, { ts: Date.now(), results });
+}
+
+// If a longer query for the same prefix is already cached, we can synthesise
+// a shorter-query result by filtering — typically while the user is still
+// typing. This is best-effort and only used as instant UI; a real fetch may
+// still refresh the list moments later.
+function prefixCacheLookup(q: string, limit: number): NominatimPlace[] | null {
+  const lower = q.toLowerCase();
+  for (const [key, entry] of searchCache) {
+    if (Date.now() - entry.ts > CACHE_TTL_MS) continue;
+    if (key.startsWith(lower) && key !== lower) {
+      const filtered = entry.results.filter((r) => r.display_name.toLowerCase().includes(lower));
+      if (filtered.length > 0) return filtered.slice(0, limit);
+    }
+  }
+  return null;
+}
+
 export async function searchPlaces(
   query: string,
   signal?: AbortSignal,
@@ -21,17 +63,41 @@ export async function searchPlaces(
 ): Promise<NominatimPlace[]> {
   const q = query.trim();
   if (q.length < 2) return [];
-  const url = `${BASE}/search?q=${encodeURIComponent(q)}&format=json&limit=${limit}&addressdetails=0`;
-  try {
-    const res = await fetch(url, {
-      signal,
-      headers: { Accept: "application/json" },
-    });
-    if (!res.ok) return [];
-    return (await res.json()) as NominatimPlace[];
-  } catch {
-    return [];
+  const key = q.toLowerCase();
+
+  const cached = cacheGet(key);
+  if (cached) return cached.slice(0, limit);
+
+  // Reuse an in-flight request for the same key — avoids duplicate work when
+  // the same query is issued by multiple PlaceSearch instances simultaneously.
+  const existing = inflight.get(key);
+  if (existing) {
+    try { return (await existing).slice(0, limit); } catch { return []; }
   }
+
+  const url = `${BASE}/search?q=${encodeURIComponent(q)}&format=json&limit=${Math.max(limit, 8)}&addressdetails=0`;
+  const promise = (async (): Promise<NominatimPlace[]> => {
+    try {
+      const res = await fetch(url, {
+        signal,
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok) return [];
+      const data = (await res.json()) as NominatimPlace[];
+      cacheSet(key, data);
+      return data;
+    } catch {
+      // If we got aborted but have a usable prefix cache, fall back to that
+      // so the UI never feels empty while typing.
+      const fb = prefixCacheLookup(key, limit);
+      return fb ?? [];
+    } finally {
+      inflight.delete(key);
+    }
+  })();
+  inflight.set(key, promise);
+  const out = await promise;
+  return out.slice(0, limit);
 }
 
 export async function reverseGeocode(
