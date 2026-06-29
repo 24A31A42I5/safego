@@ -100,6 +100,15 @@ export async function searchPlaces(
   return out.slice(0, limit);
 }
 
+// Synchronous lookup used by UI to render instantly while debouncing.
+export function peekCachedPlaces(query: string, limit = 6): NominatimPlace[] | null {
+  const q = query.trim().toLowerCase();
+  if (q.length < 2) return null;
+  const exact = cacheGet(q);
+  if (exact) return exact.slice(0, limit);
+  return prefixCacheLookup(q, limit);
+}
+
 export async function reverseGeocode(
   lat: number,
   lon: number,
