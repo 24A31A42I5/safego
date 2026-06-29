@@ -34,7 +34,18 @@ import { TRANSPORT_OPTIONS, parseGroupJourneyStop, richStopToGroupStop, type Gro
 import { ShareTourDialog, type ShareTourPayload } from "@/components/ShareTourDialog";
 import { EditStopDialog } from "@/components/EditStopDialog";
 import { GroupJoinRequestsPanel } from "@/components/GroupJoinRequestsPanel";
-import { Share2, Pencil, Link2 } from "lucide-react";
+import { Share2, Pencil, Link2, Trash2, Loader2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/tourist/groups/$groupId")({
   head: () => ({
@@ -613,6 +624,31 @@ function GroupDetail() {
     toast.success("Live Mode started — route planning is locked");
   };
 
+  const [deleting, setDeleting] = useState(false);
+  const deleteGroup = async () => {
+    if (!group || !user || group.creator_id !== user.id) return;
+    setDeleting(true);
+    try {
+      // Best-effort cascade clean-up. Order matters only if FKs are RESTRICT.
+      await Promise.all([
+        supabase.from("member_locations").delete().eq("group_id", group.id),
+        supabase.from("separation_alerts").delete().eq("group_id", group.id),
+        supabase.from("group_join_requests").delete().eq("group_id", group.id),
+        supabase.from("tour_group_members").delete().eq("group_id", group.id),
+      ]);
+      const { error } = await supabase.from("tour_groups").delete().eq("id", group.id);
+      if (error) throw error;
+      toast.success("Group tour deleted");
+      navigate({ to: "/tourist/groups" });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete group");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+
+
   const endTour = async () => {
     setLocations([]);
     setIsTourStarted(false);
@@ -655,6 +691,41 @@ function GroupDetail() {
             <Button variant="outline" size="sm" onClick={copyInvite}>
               <Link2 className="mr-1 h-4 w-4" /> Copy invite link
             </Button>
+            {group && user && group.creator_id === user.id && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="ml-auto text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    disabled={isTourStarted}
+                    title={isTourStarted ? "End live mode to delete" : "Delete group tour"}
+                  >
+                    <Trash2 className="mr-1 h-4 w-4" /> Delete
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete this group tour?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This permanently removes “{group.name}” along with all members, invitations,
+                      live locations and route data. This cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={(e) => { e.preventDefault(); void deleteGroup(); }}
+                      disabled={deleting}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {deleting ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Trash2 className="mr-1 h-4 w-4" />}
+                      Delete tour
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
           <div className="flex flex-wrap gap-2">
             {members.map((m, i) => (
