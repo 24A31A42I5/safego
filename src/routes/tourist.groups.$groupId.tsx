@@ -624,6 +624,28 @@ function GroupDetail() {
     toast.success("Live Mode started — route planning is locked");
   };
 
+  const [deleting, setDeleting] = useState(false);
+  const deleteGroup = async () => {
+    if (!group || !user || group.creator_id !== user.id) return;
+    setDeleting(true);
+    try {
+      // Best-effort cascade clean-up. Order matters only if FKs are RESTRICT.
+      await Promise.all([
+        supabase.from("member_locations").delete().eq("group_id", group.id),
+        supabase.from("separation_alerts").delete().eq("group_id", group.id),
+        supabase.from("group_join_requests").delete().eq("group_id", group.id),
+        supabase.from("tour_group_members").delete().eq("group_id", group.id),
+      ]);
+      const { error } = await supabase.from("tour_groups").delete().eq("id", group.id);
+      if (error) throw error;
+      toast.success("Group tour deleted");
+      navigate({ to: "/tourist/groups" });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete group");
+    } finally {
+      setDeleting(false);
+    }
+
   const endTour = async () => {
     setLocations([]);
     setIsTourStarted(false);
