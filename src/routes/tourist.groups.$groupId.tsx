@@ -645,6 +645,9 @@ function GroupDetail() {
     } finally {
       setDeleting(false);
     }
+  };
+
+
 
   const endTour = async () => {
     setLocations([]);
