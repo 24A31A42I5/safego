@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
-import { searchPlaces, type NominatimPlace } from "@/lib/nominatim";
+import { searchPlaces, peekCachedPlaces, type NominatimPlace } from "@/lib/nominatim";
 import { Loader2, MapPin, Clock } from "lucide-react";
 
 interface Props {
