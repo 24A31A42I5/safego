@@ -34,7 +34,18 @@ import { TRANSPORT_OPTIONS, parseGroupJourneyStop, richStopToGroupStop, type Gro
 import { ShareTourDialog, type ShareTourPayload } from "@/components/ShareTourDialog";
 import { EditStopDialog } from "@/components/EditStopDialog";
 import { GroupJoinRequestsPanel } from "@/components/GroupJoinRequestsPanel";
-import { Share2, Pencil, Link2 } from "lucide-react";
+import { Share2, Pencil, Link2, Trash2, Loader2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/tourist/groups/$groupId")({
   head: () => ({
