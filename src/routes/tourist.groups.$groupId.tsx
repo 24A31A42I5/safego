@@ -691,6 +691,41 @@ function GroupDetail() {
             <Button variant="outline" size="sm" onClick={copyInvite}>
               <Link2 className="mr-1 h-4 w-4" /> Copy invite link
             </Button>
+            {group && user && group.creator_id === user.id && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="ml-auto text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    disabled={isTourStarted}
+                    title={isTourStarted ? "End live mode to delete" : "Delete group tour"}
+                  >
+                    <Trash2 className="mr-1 h-4 w-4" /> Delete
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete this group tour?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This permanently removes “{group.name}” along with all members, invitations,
+                      live locations and route data. This cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={(e) => { e.preventDefault(); void deleteGroup(); }}
+                      disabled={deleting}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {deleting ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Trash2 className="mr-1 h-4 w-4" />}
+                      Delete tour
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
           <div className="flex flex-wrap gap-2">
             {members.map((m, i) => (
