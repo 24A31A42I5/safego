@@ -487,7 +487,8 @@ function ActiveTourCard() {
     };
   }, [user]);
 
-  if (loading || !tour) return null;
+  // Only show the Current Tour card when a tour is actively live.
+  if (loading || !tour || !tour.is_live) return null;
 
   return (
     <Card className={tour.is_live ? "border-primary/60 ring-1 ring-primary/30" : undefined}>
