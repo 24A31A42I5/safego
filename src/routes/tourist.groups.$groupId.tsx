@@ -479,10 +479,56 @@ function GroupDetail() {
           route_polyline: route?.coordinates ? encodePolyline(downsamplePolyline(route.coordinates, 200)) : null,
           route_distance_m: route?.distance ?? 0,
           route_duration_s: route?.duration ?? 0,
+          route_segments: segments as unknown as never,
         })
       .eq("id", group.id);
     if (error) toast.error(error.message);
     else toast.success("Route saved");
+  };
+
+  // Persist a segment (geometry computed here) and update local state
+  const persistSegments = async (next: RouteSegment[]) => {
+    setSegments(next);
+    if (!group) return;
+    const { error } = await supabase
+      .from("tour_groups")
+      .update({ route_segments: next as unknown as never })
+      .eq("id", group.id);
+    if (error) toast.error(error.message);
+  };
+
+  const saveSegment = async (
+    fromIdx: number,
+    patch: Omit<RouteSegment, "id" | "fromId" | "toId" | "geometry" | "distanceM" | "durationS">,
+  ) => {
+    const from = stops[fromIdx];
+    const to = stops[fromIdx + 1];
+    if (!from || !to) return;
+    const geo = await computeSegmentGeometry(from.pos, to.pos, patch.transport);
+    const seg: RouteSegment = {
+      id: `seg-${from.id}-${to.id}-${Date.now()}`,
+      fromId: from.id!,
+      toId: to.id!,
+      ...patch,
+      geometry: encodeSegmentGeometry(geo.coords),
+      distanceM: geo.distanceM,
+      durationS: geo.durationS,
+    };
+    const next = [
+      ...segments.filter((s) => !(s.fromId === from.id && s.toId === to.id)),
+      seg,
+    ];
+    await persistSegments(next);
+    toast.success("Segment saved");
+  };
+
+  const deleteSegment = async (fromIdx: number) => {
+    const from = stops[fromIdx];
+    const to = stops[fromIdx + 1];
+    if (!from || !to) return;
+    const next = segments.filter((s) => !(s.fromId === from.id && s.toId === to.id));
+    await persistSegments(next);
+    toast.success("Segment removed");
   };
 
   const saveStopDetails = async (index: number, patch: Partial<Stop>) => {
@@ -500,6 +546,7 @@ function GroupDetail() {
   const clearRoute = () => {
     if (isTourStarted) return toast.error("End the live tour before clearing the route");
     setStops([]);
+    setSegments([]);
     setRoute(null);
     setRouteLockedToStored(false);
     setSuggestions([]);
