@@ -1261,6 +1261,28 @@ function GroupDetail() {
           if (editStopIndex !== null) await saveStopDetails(editStopIndex, patch);
         }}
       />
+
+      {segmentDialogFor !== null && stops[segmentDialogFor.fromIdx] && stops[segmentDialogFor.fromIdx + 1] && (
+        <RouteSegmentDialog
+          open={segmentDialogFor !== null}
+          onOpenChange={(v) => { if (!v) setSegmentDialogFor(null); }}
+          fromLabel={stops[segmentDialogFor.fromIdx].label}
+          toLabel={stops[segmentDialogFor.fromIdx + 1].label}
+          existing={
+            segments.find(
+              (s) => s.fromId === stops[segmentDialogFor.fromIdx].id && s.toId === stops[segmentDialogFor.fromIdx + 1].id,
+            ) ?? null
+          }
+          onSave={async (patch) => {
+            await saveSegment(segmentDialogFor.fromIdx, patch);
+            setSegmentDialogFor(null);
+          }}
+          onDelete={async () => {
+            await deleteSegment(segmentDialogFor.fromIdx);
+            setSegmentDialogFor(null);
+          }}
+        />
+      )}
     </div>
   );
 }
