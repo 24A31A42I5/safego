@@ -337,6 +337,30 @@ function GroupDetail() {
     return () => clearInterval(t);
   }, [user, location, groupId, isTourStarted]);
 
+  // Prune orphaned segments: any segment whose from/to no longer refer to a
+  // pair of consecutive stops is removed.
+  useEffect(() => {
+    if (segments.length === 0) return;
+    const validPairs = new Set<string>();
+    for (let i = 0; i < stops.length - 1; i++) {
+      validPairs.add(`${stops[i].id}::${stops[i + 1].id}`);
+    }
+    const kept = segments.filter((s) => validPairs.has(`${s.fromId}::${s.toId}`));
+    if (kept.length !== segments.length) setSegments(kept);
+  }, [stops, segments]);
+
+  // Renderable per-segment polylines for the map. If no user segments are
+  // defined, falls back to the single full-route polyline.
+  const renderableSegments = useMemo(
+    () =>
+      buildRenderableSegments(
+        stops.map((s) => ({ id: s.id!, pos: s.pos })),
+        segments,
+        segments.length > 0 ? null : route?.coordinates ?? null,
+      ),
+    [stops, segments, route?.coordinates],
+  );
+
   // Re-fetch OSRM route whenever stops change
   useEffect(() => {
     if (waypoints.length < 2) {
