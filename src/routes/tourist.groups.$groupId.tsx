@@ -1020,12 +1020,6 @@ function GroupDetail() {
               Search a start location above to begin planning.
             </p>
           )}
-          ) : (
-            <p className="rounded-md border border-dashed p-3 text-center text-xs text-muted-foreground">
-              <MapPin className="mr-1 inline h-3.5 w-3.5" />
-              Search a start location above to begin planning.
-            </p>
-          )}
         </CardContent>
       </Card>
 
