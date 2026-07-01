@@ -29,7 +29,9 @@ import { fetchRoute, formatDistance, formatDuration, type RouteResult } from "@/
 import type { SuggestedPOI } from "@/lib/nominatim";
 import { haversine, pointsBounds } from "@/lib/geo";
 import { decodePolyline, downsamplePolyline, encodePolyline } from "@/lib/polyline";
-import { TRANSPORT_OPTIONS, parseGroupJourneyStop, richStopToGroupStop, type GroupJourneyStop, type RichStop } from "@/lib/tour-stop";
+import { TRANSPORT_OPTIONS, TRANSPORT_STYLE, parseGroupJourneyStop, parseRouteSegment, richStopToGroupStop, type GroupJourneyStop, type RichStop, type RouteSegment } from "@/lib/tour-stop";
+import { buildRenderableSegments, computeSegmentGeometry, encodeSegmentGeometry } from "@/lib/segments";
+import { RouteSegmentDialog } from "@/components/RouteSegmentDialog";
 
 import { ShareTourDialog, type ShareTourPayload } from "@/components/ShareTourDialog";
 import { EditStopDialog } from "@/components/EditStopDialog";
@@ -78,6 +80,7 @@ interface GroupRow {
   route_polyline: string | null;
   route_distance_m: number;
   route_duration_s: number;
+  route_segments: unknown;
   tips: string | null;
   tags: string[];
   source_shared_tour_id: string | null;
@@ -119,6 +122,8 @@ function GroupDetail() {
   const [members, setMembers] = useState<MemberProfile[]>([]);
   const [locations, setLocations] = useState<MemberLoc[]>([]);
   const [stops, setStops] = useState<Stop[]>([]);
+  const [segments, setSegments] = useState<RouteSegment[]>([]);
+  const [segmentDialogFor, setSegmentDialogFor] = useState<{ fromIdx: number } | null>(null);
   const [route, setRoute] = useState<RouteResult | null>(null);
   const [routeLockedToStored, setRouteLockedToStored] = useState(false);
   const [suggestions, setSuggestions] = useState<SuggestedPOI[]>([]);
