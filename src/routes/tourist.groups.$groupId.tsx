@@ -242,7 +242,13 @@ function GroupDetail() {
         makeStop([data.dest_lat, data.dest_lng], data.dest_label, sortedStops.length + 1),
       ];
       const routeCoordinates = data.route_polyline ? decodePolyline(data.route_polyline) : [];
+      const importedSegments = Array.isArray((data as { route_segments?: unknown[] }).route_segments)
+        ? ((data as { route_segments?: unknown[] }).route_segments as unknown[])
+            .map(parseRouteSegment)
+            .filter((s): s is RouteSegment => s !== null)
+        : [];
       setStops(next);
+      setSegments(importedSegments);
       setRoute(
         routeCoordinates.length > 1
           ? { coordinates: routeCoordinates, distance: data.route_distance_m ?? 0, duration: data.route_duration_s ?? 0 }
@@ -260,6 +266,7 @@ function GroupDetail() {
           route_polyline: data.route_polyline,
           route_distance_m: data.route_distance_m ?? 0,
           route_duration_s: data.route_duration_s ?? 0,
+          route_segments: importedSegments as unknown as never,
           tips: data.tips,
           tags: data.tags ?? [],
           source_shared_tour_id: data.id,
