@@ -28,6 +28,14 @@ export interface MapMarker {
   initials?: string;
 }
 
+export interface RouteSegmentLine {
+  id: string;
+  coords: [number, number][];
+  color: string;
+  weight?: number;
+  dashArray?: string;
+}
+
 interface SafetyMapProps {
   center?: [number, number];
   zoom?: number;
@@ -39,6 +47,7 @@ interface SafetyMapProps {
   onMapClick?: (latlng: [number, number]) => void;
   cursor?: string;
   routePolyline?: [number, number][] | null;
+  routeSegments?: RouteSegmentLine[] | null;
   fitBounds?: [[number, number], [number, number]] | null;
   fitBoundsEnabled?: boolean;
   children?: React.ReactNode;
@@ -121,6 +130,7 @@ export const SafetyMap = memo(function SafetyMap({
   onMapClick,
   cursor,
   routePolyline,
+  routeSegments,
   fitBounds,
   fitBoundsEnabled = true,
   children,
@@ -173,12 +183,27 @@ export const SafetyMap = memo(function SafetyMap({
             </Polygon>
           );
         })}
-        {routePolyline && routePolyline.length > 1 && (
-          <Polyline
-            positions={routePolyline}
-            pathOptions={{ color: "#2563eb", weight: 5, opacity: 0.8 }}
-          />
-        )}
+        {routeSegments && routeSegments.length > 0
+          ? routeSegments.map((seg) => (
+              seg.coords.length > 1 ? (
+                <Polyline
+                  key={seg.id}
+                  positions={seg.coords}
+                  pathOptions={{
+                    color: seg.color,
+                    weight: seg.weight ?? 5,
+                    opacity: 0.85,
+                    dashArray: seg.dashArray,
+                  }}
+                />
+              ) : null
+            ))
+          : routePolyline && routePolyline.length > 1 && (
+              <Polyline
+                positions={routePolyline}
+                pathOptions={{ color: "#2563eb", weight: 5, opacity: 0.8 }}
+              />
+            )}
         {userLocation && (
           <Marker position={userLocation}>
             <Popup>You are here</Popup>
