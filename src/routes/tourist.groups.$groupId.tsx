@@ -860,7 +860,8 @@ function GroupDetail() {
           <SafetyMap
             userLocation={isTourStarted ? location : undefined}
             markers={mapMarkers}
-            routePolyline={route?.coordinates ?? null}
+            routeSegments={renderableSegments.length ? renderableSegments : null}
+            routePolyline={renderableSegments.length ? null : route?.coordinates ?? null}
             fitBounds={bounds}
             fitBoundsEnabled={isTourStarted || Boolean(panToStop) || waypoints.length > 1}
             panTo={panToStop}
