@@ -345,6 +345,7 @@ export type Database = {
           route_distance_m: number
           route_duration_s: number
           route_polyline: string | null
+          route_segments: Json
           saves_count: number
           start_label: string
           start_lat: number
@@ -372,6 +373,7 @@ export type Database = {
           route_distance_m?: number
           route_duration_s?: number
           route_polyline?: string | null
+          route_segments?: Json
           saves_count?: number
           start_label: string
           start_lat: number
@@ -399,6 +401,7 @@ export type Database = {
           route_distance_m?: number
           route_duration_s?: number
           route_polyline?: string | null
+          route_segments?: Json
           saves_count?: number
           start_label?: string
           start_lat?: number
@@ -494,6 +497,7 @@ export type Database = {
           route_distance_m: number
           route_duration_s: number
           route_polyline: string | null
+          route_segments: Json
           source_shared_tour_id: string | null
           tags: string[]
           tips: string | null
@@ -514,6 +518,7 @@ export type Database = {
           route_distance_m?: number
           route_duration_s?: number
           route_polyline?: string | null
+          route_segments?: Json
           source_shared_tour_id?: string | null
           tags?: string[]
           tips?: string | null
@@ -534,6 +539,7 @@ export type Database = {
           route_distance_m?: number
           route_duration_s?: number
           route_polyline?: string | null
+          route_segments?: Json
           source_shared_tour_id?: string | null
           tags?: string[]
           tips?: string | null

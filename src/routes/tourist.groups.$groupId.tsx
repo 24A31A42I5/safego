@@ -29,7 +29,9 @@ import { fetchRoute, formatDistance, formatDuration, type RouteResult } from "@/
 import type { SuggestedPOI } from "@/lib/nominatim";
 import { haversine, pointsBounds } from "@/lib/geo";
 import { decodePolyline, downsamplePolyline, encodePolyline } from "@/lib/polyline";
-import { TRANSPORT_OPTIONS, parseGroupJourneyStop, richStopToGroupStop, type GroupJourneyStop, type RichStop } from "@/lib/tour-stop";
+import { TRANSPORT_OPTIONS, TRANSPORT_STYLE, parseGroupJourneyStop, parseRouteSegment, richStopToGroupStop, type GroupJourneyStop, type RichStop, type RouteSegment } from "@/lib/tour-stop";
+import { buildRenderableSegments, computeSegmentGeometry, encodeSegmentGeometry } from "@/lib/segments";
+import { RouteSegmentDialog } from "@/components/RouteSegmentDialog";
 
 import { ShareTourDialog, type ShareTourPayload } from "@/components/ShareTourDialog";
 import { EditStopDialog } from "@/components/EditStopDialog";
@@ -78,6 +80,7 @@ interface GroupRow {
   route_polyline: string | null;
   route_distance_m: number;
   route_duration_s: number;
+  route_segments: unknown;
   tips: string | null;
   tags: string[];
   source_shared_tour_id: string | null;
@@ -119,6 +122,8 @@ function GroupDetail() {
   const [members, setMembers] = useState<MemberProfile[]>([]);
   const [locations, setLocations] = useState<MemberLoc[]>([]);
   const [stops, setStops] = useState<Stop[]>([]);
+  const [segments, setSegments] = useState<RouteSegment[]>([]);
+  const [segmentDialogFor, setSegmentDialogFor] = useState<{ fromIdx: number } | null>(null);
   const [route, setRoute] = useState<RouteResult | null>(null);
   const [routeLockedToStored, setRouteLockedToStored] = useState(false);
   const [suggestions, setSuggestions] = useState<SuggestedPOI[]>([]);
@@ -153,6 +158,10 @@ function GroupDetail() {
       const wp = Array.isArray(g.waypoints) ? (g.waypoints as unknown[]) : [];
       const parsed: Stop[] = wp.map((w, i) => parseGroupJourneyStop(w, i));
       setStops(parsed);
+      const rawSegs = Array.isArray((g as { route_segments?: unknown[] }).route_segments)
+        ? ((g as { route_segments?: unknown[] }).route_segments as unknown[])
+        : [];
+      setSegments(rawSegs.map(parseRouteSegment).filter((s): s is RouteSegment => s !== null));
       if (g.route_polyline) {
         const coordinates = decodePolyline(g.route_polyline);
         setRoute({ coordinates, distance: g.route_distance_m ?? 0, duration: g.route_duration_s ?? 0 });
@@ -233,7 +242,13 @@ function GroupDetail() {
         makeStop([data.dest_lat, data.dest_lng], data.dest_label, sortedStops.length + 1),
       ];
       const routeCoordinates = data.route_polyline ? decodePolyline(data.route_polyline) : [];
+      const importedSegments = Array.isArray((data as { route_segments?: unknown[] }).route_segments)
+        ? ((data as { route_segments?: unknown[] }).route_segments as unknown[])
+            .map(parseRouteSegment)
+            .filter((s): s is RouteSegment => s !== null)
+        : [];
       setStops(next);
+      setSegments(importedSegments);
       setRoute(
         routeCoordinates.length > 1
           ? { coordinates: routeCoordinates, distance: data.route_distance_m ?? 0, duration: data.route_duration_s ?? 0 }
@@ -251,6 +266,7 @@ function GroupDetail() {
           route_polyline: data.route_polyline,
           route_distance_m: data.route_distance_m ?? 0,
           route_duration_s: data.route_duration_s ?? 0,
+          route_segments: importedSegments as unknown as never,
           tips: data.tips,
           tags: data.tags ?? [],
           source_shared_tour_id: data.id,
@@ -320,6 +336,30 @@ function GroupDetail() {
     const t = setInterval(push, 10000);
     return () => clearInterval(t);
   }, [user, location, groupId, isTourStarted]);
+
+  // Prune orphaned segments: any segment whose from/to no longer refer to a
+  // pair of consecutive stops is removed.
+  useEffect(() => {
+    if (segments.length === 0) return;
+    const validPairs = new Set<string>();
+    for (let i = 0; i < stops.length - 1; i++) {
+      validPairs.add(`${stops[i].id}::${stops[i + 1].id}`);
+    }
+    const kept = segments.filter((s) => validPairs.has(`${s.fromId}::${s.toId}`));
+    if (kept.length !== segments.length) setSegments(kept);
+  }, [stops, segments]);
+
+  // Renderable per-segment polylines for the map. If no user segments are
+  // defined, falls back to the single full-route polyline.
+  const renderableSegments = useMemo(
+    () =>
+      buildRenderableSegments(
+        stops.map((s) => ({ id: s.id!, pos: s.pos })),
+        segments,
+        segments.length > 0 ? null : route?.coordinates ?? null,
+      ),
+    [stops, segments, route?.coordinates],
+  );
 
   // Re-fetch OSRM route whenever stops change
   useEffect(() => {
@@ -463,10 +503,56 @@ function GroupDetail() {
           route_polyline: route?.coordinates ? encodePolyline(downsamplePolyline(route.coordinates, 200)) : null,
           route_distance_m: route?.distance ?? 0,
           route_duration_s: route?.duration ?? 0,
+          route_segments: segments as unknown as never,
         })
       .eq("id", group.id);
     if (error) toast.error(error.message);
     else toast.success("Route saved");
+  };
+
+  // Persist a segment (geometry computed here) and update local state
+  const persistSegments = async (next: RouteSegment[]) => {
+    setSegments(next);
+    if (!group) return;
+    const { error } = await supabase
+      .from("tour_groups")
+      .update({ route_segments: next as unknown as never })
+      .eq("id", group.id);
+    if (error) toast.error(error.message);
+  };
+
+  const saveSegment = async (
+    fromIdx: number,
+    patch: Omit<RouteSegment, "id" | "fromId" | "toId" | "geometry" | "distanceM" | "durationS">,
+  ) => {
+    const from = stops[fromIdx];
+    const to = stops[fromIdx + 1];
+    if (!from || !to) return;
+    const geo = await computeSegmentGeometry(from.pos, to.pos, patch.transport);
+    const seg: RouteSegment = {
+      id: `seg-${from.id}-${to.id}-${Date.now()}`,
+      fromId: from.id!,
+      toId: to.id!,
+      ...patch,
+      geometry: encodeSegmentGeometry(geo.coords),
+      distanceM: geo.distanceM,
+      durationS: geo.durationS,
+    };
+    const next = [
+      ...segments.filter((s) => !(s.fromId === from.id && s.toId === to.id)),
+      seg,
+    ];
+    await persistSegments(next);
+    toast.success("Segment saved");
+  };
+
+  const deleteSegment = async (fromIdx: number) => {
+    const from = stops[fromIdx];
+    const to = stops[fromIdx + 1];
+    if (!from || !to) return;
+    const next = segments.filter((s) => !(s.fromId === from.id && s.toId === to.id));
+    await persistSegments(next);
+    toast.success("Segment removed");
   };
 
   const saveStopDetails = async (index: number, patch: Partial<Stop>) => {
@@ -484,6 +570,7 @@ function GroupDetail() {
   const clearRoute = () => {
     if (isTourStarted) return toast.error("End the live tour before clearing the route");
     setStops([]);
+    setSegments([]);
     setRoute(null);
     setRouteLockedToStored(false);
     setSuggestions([]);
@@ -773,7 +860,8 @@ function GroupDetail() {
           <SafetyMap
             userLocation={isTourStarted ? location : undefined}
             markers={mapMarkers}
-            routePolyline={route?.coordinates ?? null}
+            routeSegments={renderableSegments.length ? renderableSegments : null}
+            routePolyline={renderableSegments.length ? null : route?.coordinates ?? null}
             fitBounds={bounds}
             fitBoundsEnabled={isTourStarted || Boolean(panToStop) || waypoints.length > 1}
             panTo={panToStop}
@@ -854,51 +942,77 @@ function GroupDetail() {
           </div>
 
           {stops.length > 0 ? (
-            <ul className="divide-y rounded-md border">
-              {stops.map((s, i) => (
-                <li key={i} className="flex items-center gap-2 p-2 text-sm">
-                  <span
-                    className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-                    style={{
-                      background:
-                        i === 0 ? "#16a34a" : i === stops.length - 1 ? "#dc2626" : "#0ea5e9",
-                    }}
-                  >
-                    {i === 0 ? "A" : i === stops.length - 1 ? "B" : i}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate">{s.label}</span>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7"
-                    onClick={() => moveStop(i, -1)}
-                    disabled={isTourStarted || i === 0}
-                    aria-label="Move up"
-                  >
-                    <ArrowUp className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7"
-                    onClick={() => moveStop(i, 1)}
-                    disabled={isTourStarted || i === stops.length - 1}
-                    aria-label="Move down"
-                  >
-                    <ArrowDown className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 text-destructive"
-                    onClick={() => removeStop(i)}
-                    disabled={isTourStarted}
-                    aria-label="Remove stop"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
-                </li>
-              ))}
+            <ul className="rounded-md border">
+              {stops.map((s, i) => {
+                const seg = i < stops.length - 1
+                  ? segments.find((sg) => sg.fromId === s.id && sg.toId === stops[i + 1].id) ?? null
+                  : null;
+                const segMeta = seg ? TRANSPORT_OPTIONS.find((o) => o.type === seg.transport) : null;
+                const segStyle = seg ? TRANSPORT_STYLE[seg.transport] : null;
+                return (
+                  <li key={i} className="border-b last:border-b-0">
+                    <div className="flex items-center gap-2 p-2 text-sm">
+                      <span
+                        className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+                        style={{
+                          background:
+                            i === 0 ? "#16a34a" : i === stops.length - 1 ? "#dc2626" : "#0ea5e9",
+                        }}
+                      >
+                        {i === 0 ? "A" : i === stops.length - 1 ? "B" : i}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate">{s.label}</span>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => moveStop(i, -1)} disabled={isTourStarted || i === 0} aria-label="Move up">
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => moveStop(i, 1)} disabled={isTourStarted || i === stops.length - 1} aria-label="Move down">
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => removeStop(i)} disabled={isTourStarted} aria-label="Remove stop">
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    {i < stops.length - 1 && (
+                      <div className="flex items-center gap-2 border-t bg-muted/30 px-2 py-1.5">
+                        <span className="ml-2 h-6 w-px bg-border" />
+                        {seg && segMeta && segStyle ? (
+                          <button
+                            type="button"
+                            disabled={isTourStarted}
+                            onClick={() => setSegmentDialogFor({ fromIdx: i })}
+                            className="flex flex-1 items-center gap-2 rounded-md border bg-background px-2 py-1 text-left text-xs hover:bg-accent disabled:opacity-60"
+                            style={{ borderLeft: `3px solid ${segStyle.color}` }}
+                          >
+                            <span className="text-base leading-none">{segMeta.icon}</span>
+                            <span className="font-medium">{segMeta.label}</span>
+                            {(seg.operator || seg.number || seg.vehicleName) && (
+                              <span className="truncate text-muted-foreground">
+                                · {[seg.operator, seg.number, seg.vehicleName].filter(Boolean).join(" ")}
+                              </span>
+                            )}
+                            {(seg.departure || seg.arrival) && (
+                              <span className="ml-auto text-muted-foreground">
+                                {seg.departure ?? "?"} → {seg.arrival ?? "?"}
+                              </span>
+                            )}
+                            <Pencil className="ml-2 h-3 w-3 text-muted-foreground" />
+                          </button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 flex-1 justify-start gap-1 text-xs"
+                            disabled={isTourStarted}
+                            onClick={() => setSegmentDialogFor({ fromIdx: i })}
+                          >
+                            <Plus className="h-3 w-3" /> Route to next stop
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <p className="rounded-md border border-dashed p-3 text-center text-xs text-muted-foreground">
@@ -1147,6 +1261,28 @@ function GroupDetail() {
           if (editStopIndex !== null) await saveStopDetails(editStopIndex, patch);
         }}
       />
+
+      {segmentDialogFor !== null && stops[segmentDialogFor.fromIdx] && stops[segmentDialogFor.fromIdx + 1] && (
+        <RouteSegmentDialog
+          open={segmentDialogFor !== null}
+          onOpenChange={(v) => { if (!v) setSegmentDialogFor(null); }}
+          fromLabel={stops[segmentDialogFor.fromIdx].label}
+          toLabel={stops[segmentDialogFor.fromIdx + 1].label}
+          existing={
+            segments.find(
+              (s) => s.fromId === stops[segmentDialogFor.fromIdx].id && s.toId === stops[segmentDialogFor.fromIdx + 1].id,
+            ) ?? null
+          }
+          onSave={async (patch) => {
+            await saveSegment(segmentDialogFor.fromIdx, patch);
+            setSegmentDialogFor(null);
+          }}
+          onDelete={async () => {
+            await deleteSegment(segmentDialogFor.fromIdx);
+            setSegmentDialogFor(null);
+          }}
+        />
+      )}
     </div>
   );
 }
