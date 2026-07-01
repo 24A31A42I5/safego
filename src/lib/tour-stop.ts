@@ -1,7 +1,7 @@
 // Rich shape for a single stop in a shared tour / group tour. All extra
 // fields are optional so existing rows keep working.
 
-export type TransportType = "bus" | "train" | "car" | "flight" | "bike" | "walk" | "other";
+export type TransportType = "bus" | "train" | "car" | "flight" | "bike" | "walk" | "taxi" | "other";
 
 export interface TransportOption {
   type: TransportType;
@@ -12,11 +12,43 @@ export const TRANSPORT_OPTIONS: { type: TransportType; label: string; icon: stri
   { type: "bus", label: "Bus", icon: "🚌" },
   { type: "train", label: "Train", icon: "🚆" },
   { type: "car", label: "Car", icon: "🚗" },
+  { type: "taxi", label: "Taxi", icon: "🚕" },
   { type: "flight", label: "Flight", icon: "✈️" },
-  { type: "bike", label: "Bike", icon: "🚲" },
-  { type: "walk", label: "Walk", icon: "🚶" },
+  { type: "bike", label: "Bike", icon: "🛵" },
+  { type: "walk", label: "Walking", icon: "🚶" },
   { type: "other", label: "Other", icon: "📦" },
 ];
+
+// Visual styling per transport type for map segments.
+export const TRANSPORT_STYLE: Record<TransportType, { color: string; weight: number; dashArray?: string; profile: "driving" | "walking" | "cycling" | "flight" | "train" }> = {
+  bus:    { color: "#2563eb", weight: 5, profile: "driving" },
+  train:  { color: "#16a34a", weight: 5, profile: "train" },
+  car:    { color: "#f97316", weight: 5, profile: "driving" },
+  taxi:   { color: "#eab308", weight: 5, profile: "driving" },
+  flight: { color: "#8b5cf6", weight: 3, dashArray: "10 8", profile: "flight" },
+  bike:   { color: "#ec4899", weight: 4, profile: "cycling" },
+  walk:   { color: "#6b7280", weight: 3, dashArray: "2 6", profile: "walking" },
+  other:  { color: "#3b82f6", weight: 4, dashArray: "6 6", profile: "driving" },
+};
+
+// Per-segment transport metadata. All string fields are free-text so we can
+// support bus/train/flight/car/etc. with a single dialog.
+export interface RouteSegment {
+  id: string;
+  fromId: string;
+  toId: string;
+  transport: TransportType;
+  operator?: string;      // Bus operator, airline, train name
+  number?: string;        // Bus/train/flight number
+  vehicleName?: string;   // Vehicle nickname, car type
+  driverName?: string;    // For car/taxi
+  departure?: string;     // Free-text time, e.g. "06:00"
+  arrival?: string;
+  notes?: string;
+  geometry?: string;      // Encoded polyline (cached, so we don't refetch OSRM)
+  distanceM?: number;
+  durationS?: number;
+}
 
 export interface RichStop {
   id?: string;
@@ -143,5 +175,27 @@ export function parseGroupJourneyStop(raw: unknown, fallbackOrder = 0): GroupJou
     images: Array.isArray(o.images) ? o.images : [],
     tags: Array.isArray(o.tags) ? o.tags : [],
     transportAvailability: Array.isArray(o.transportAvailability) ? o.transportAvailability : [],
+  };
+}
+
+export function parseRouteSegment(raw: unknown): RouteSegment | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Partial<RouteSegment>;
+  if (!o.fromId || !o.toId || !o.transport) return null;
+  return {
+    id: o.id ?? `seg-${o.fromId}-${o.toId}`,
+    fromId: o.fromId,
+    toId: o.toId,
+    transport: o.transport,
+    operator: o.operator,
+    number: o.number,
+    vehicleName: o.vehicleName,
+    driverName: o.driverName,
+    departure: o.departure,
+    arrival: o.arrival,
+    notes: o.notes,
+    geometry: o.geometry,
+    distanceM: o.distanceM,
+    durationS: o.durationS,
   };
 }
