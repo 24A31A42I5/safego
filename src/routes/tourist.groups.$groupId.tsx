@@ -158,6 +158,10 @@ function GroupDetail() {
       const wp = Array.isArray(g.waypoints) ? (g.waypoints as unknown[]) : [];
       const parsed: Stop[] = wp.map((w, i) => parseGroupJourneyStop(w, i));
       setStops(parsed);
+      const rawSegs = Array.isArray((g as { route_segments?: unknown[] }).route_segments)
+        ? ((g as { route_segments?: unknown[] }).route_segments as unknown[])
+        : [];
+      setSegments(rawSegs.map(parseRouteSegment).filter((s): s is RouteSegment => s !== null));
       if (g.route_polyline) {
         const coordinates = decodePolyline(g.route_polyline);
         setRoute({ coordinates, distance: g.route_distance_m ?? 0, duration: g.route_duration_s ?? 0 });
