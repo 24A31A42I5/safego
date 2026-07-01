@@ -942,52 +942,84 @@ function GroupDetail() {
           </div>
 
           {stops.length > 0 ? (
-            <ul className="divide-y rounded-md border">
-              {stops.map((s, i) => (
-                <li key={i} className="flex items-center gap-2 p-2 text-sm">
-                  <span
-                    className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-                    style={{
-                      background:
-                        i === 0 ? "#16a34a" : i === stops.length - 1 ? "#dc2626" : "#0ea5e9",
-                    }}
-                  >
-                    {i === 0 ? "A" : i === stops.length - 1 ? "B" : i}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate">{s.label}</span>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7"
-                    onClick={() => moveStop(i, -1)}
-                    disabled={isTourStarted || i === 0}
-                    aria-label="Move up"
-                  >
-                    <ArrowUp className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7"
-                    onClick={() => moveStop(i, 1)}
-                    disabled={isTourStarted || i === stops.length - 1}
-                    aria-label="Move down"
-                  >
-                    <ArrowDown className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 text-destructive"
-                    onClick={() => removeStop(i)}
-                    disabled={isTourStarted}
-                    aria-label="Remove stop"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
-                </li>
-              ))}
+            <ul className="rounded-md border">
+              {stops.map((s, i) => {
+                const seg = i < stops.length - 1
+                  ? segments.find((sg) => sg.fromId === s.id && sg.toId === stops[i + 1].id) ?? null
+                  : null;
+                const segMeta = seg ? TRANSPORT_OPTIONS.find((o) => o.type === seg.transport) : null;
+                const segStyle = seg ? TRANSPORT_STYLE[seg.transport] : null;
+                return (
+                  <li key={i} className="border-b last:border-b-0">
+                    <div className="flex items-center gap-2 p-2 text-sm">
+                      <span
+                        className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+                        style={{
+                          background:
+                            i === 0 ? "#16a34a" : i === stops.length - 1 ? "#dc2626" : "#0ea5e9",
+                        }}
+                      >
+                        {i === 0 ? "A" : i === stops.length - 1 ? "B" : i}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate">{s.label}</span>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => moveStop(i, -1)} disabled={isTourStarted || i === 0} aria-label="Move up">
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => moveStop(i, 1)} disabled={isTourStarted || i === stops.length - 1} aria-label="Move down">
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => removeStop(i)} disabled={isTourStarted} aria-label="Remove stop">
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    {i < stops.length - 1 && (
+                      <div className="flex items-center gap-2 border-t bg-muted/30 px-2 py-1.5">
+                        <span className="ml-2 h-6 w-px bg-border" />
+                        {seg && segMeta && segStyle ? (
+                          <button
+                            type="button"
+                            disabled={isTourStarted}
+                            onClick={() => setSegmentDialogFor({ fromIdx: i })}
+                            className="flex flex-1 items-center gap-2 rounded-md border bg-background px-2 py-1 text-left text-xs hover:bg-accent disabled:opacity-60"
+                            style={{ borderLeft: `3px solid ${segStyle.color}` }}
+                          >
+                            <span className="text-base leading-none">{segMeta.icon}</span>
+                            <span className="font-medium">{segMeta.label}</span>
+                            {(seg.operator || seg.number || seg.vehicleName) && (
+                              <span className="truncate text-muted-foreground">
+                                · {[seg.operator, seg.number, seg.vehicleName].filter(Boolean).join(" ")}
+                              </span>
+                            )}
+                            {(seg.departure || seg.arrival) && (
+                              <span className="ml-auto text-muted-foreground">
+                                {seg.departure ?? "?"} → {seg.arrival ?? "?"}
+                              </span>
+                            )}
+                            <Pencil className="ml-2 h-3 w-3 text-muted-foreground" />
+                          </button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 flex-1 justify-start gap-1 text-xs"
+                            disabled={isTourStarted}
+                            onClick={() => setSegmentDialogFor({ fromIdx: i })}
+                          >
+                            <Plus className="h-3 w-3" /> Route to next stop
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
+          ) : (
+            <p className="rounded-md border border-dashed p-3 text-center text-xs text-muted-foreground">
+              <MapPin className="mr-1 inline h-3.5 w-3.5" />
+              Search a start location above to begin planning.
+            </p>
+          )}
           ) : (
             <p className="rounded-md border border-dashed p-3 text-center text-xs text-muted-foreground">
               <MapPin className="mr-1 inline h-3.5 w-3.5" />
