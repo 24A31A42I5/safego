@@ -89,7 +89,10 @@ export function PlaceSearch({ placeholder, onSelect, initialValue = "" }: Props)
     const lon = parseFloat(p.lon);
     const shortLabel = p.display_name.split(",").slice(0, 2).join(", ");
     onSelect({ lat, lon, label: p.display_name });
-    setQ(shortLabel);
+    // Auto-clear the input after selection so the user can immediately search
+    // the next place without manually clearing.
+    setQ("");
+    setResults([]);
     setOpen(false);
     const entry: PickedPlace = {
       lat,
@@ -105,7 +108,8 @@ export function PlaceSearch({ placeholder, onSelect, initialValue = "" }: Props)
 
   const pickRecent = (r: PickedPlace) => {
     onSelect({ lat: r.lat, lon: r.lon, label: r.label });
-    setQ(r.display);
+    setQ("");
+    setResults([]);
     setOpen(false);
   };
 
