@@ -14,6 +14,7 @@ import { Share2, MapPin } from "lucide-react";
 import { TourPhotoUpload } from "@/components/TourPhotoUpload";
 import {
   type RichStop,
+  type RouteSegment,
   type StopDraft,
   type TransportOption,
   type TransportType,
@@ -24,10 +25,11 @@ import {
 export interface ShareTourPayload {
   start: { pos: [number, number]; label: string };
   destination: { pos: [number, number]; label: string };
-  intermediateStops: { pos: [number, number]; label: string }[];
+  intermediateStops: { id?: string; pos: [number, number]; label: string }[];
   routeCoordinates: [number, number][] | null;
   routeDistanceM: number;
   routeDurationS: number;
+  segments?: RouteSegment[];
 }
 
 interface Props {
