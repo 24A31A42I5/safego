@@ -27,6 +27,17 @@ import {
   X,
 } from "lucide-react";
 import { ShareTourDialog, type ShareTourPayload } from "@/components/ShareTourDialog";
+import { RouteSegmentDialog } from "@/components/RouteSegmentDialog";
+import {
+  TRANSPORT_OPTIONS,
+  TRANSPORT_STYLE,
+  type RouteSegment,
+} from "@/lib/tour-stop";
+import {
+  buildRenderableSegments,
+  computeSegmentGeometry,
+  encodeSegmentGeometry,
+} from "@/lib/segments";
 import { toast } from "sonner";
 
 interface Props {
@@ -36,12 +47,18 @@ interface Props {
 }
 
 interface Stop {
+  id: string;
   pos: [number, number];
   label: string;
 }
 
+const makeId = (pos: [number, number], order: number) =>
+  `s-${order}-${pos[0].toFixed(5)}-${pos[1].toFixed(5)}-${Math.random().toString(36).slice(2, 6)}`;
+
 export function CreateTourPlanDialog({ open, onOpenChange, onPublished }: Props) {
   const [stops, setStops] = useState<Stop[]>([]);
+  const [segments, setSegments] = useState<RouteSegment[]>([]);
+  const [segmentDialogFor, setSegmentDialogFor] = useState<{ fromIdx: number } | null>(null);
   const [clickToAdd, setClickToAdd] = useState(false);
   const [route, setRoute] = useState<RouteResult | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
@@ -50,6 +67,7 @@ export function CreateTourPlanDialog({ open, onOpenChange, onPublished }: Props)
   useEffect(() => {
     if (!open) {
       setStops([]);
+      setSegments([]);
       setClickToAdd(false);
       setRoute(null);
       setPanTo(null);
@@ -71,8 +89,30 @@ export function CreateTourPlanDialog({ open, onOpenChange, onPublished }: Props)
     return () => ctrl.abort();
   }, [waypoints]);
 
+  // Prune segments referencing removed/reordered stops.
+  useEffect(() => {
+    if (segments.length === 0) return;
+    const valid = new Set<string>();
+    for (let i = 0; i < stops.length - 1; i++) valid.add(`${stops[i].id}::${stops[i + 1].id}`);
+    const kept = segments.filter((s) => valid.has(`${s.fromId}::${s.toId}`));
+    if (kept.length !== segments.length) setSegments(kept);
+  }, [stops, segments]);
+
+  const renderableSegments = useMemo(
+    () =>
+      buildRenderableSegments(
+        stops.map((s) => ({ id: s.id, pos: s.pos })),
+        segments,
+        segments.length > 0 ? null : route?.coordinates ?? null,
+      ),
+    [stops, segments, route?.coordinates],
+  );
+
   const addStop = (pos: [number, number], label: string) => {
-    setStops((p) => [...p, { pos, label }]);
+    setStops((p) => {
+      const next = [...p, { id: makeId(pos, p.length), pos, label }];
+      return next;
+    });
     setPanTo(pos);
   };
   const removeStop = (i: number) => setStops((p) => p.filter((_, idx) => idx !== i));
@@ -123,7 +163,40 @@ export function CreateTourPlanDialog({ open, onOpenChange, onPublished }: Props)
 
   const clearAll = () => {
     setStops([]);
+    setSegments([]);
     setRoute(null);
+  };
+
+  const saveSegment = async (
+    fromIdx: number,
+    patch: Omit<RouteSegment, "id" | "fromId" | "toId" | "geometry" | "distanceM" | "durationS">,
+  ) => {
+    const from = stops[fromIdx];
+    const to = stops[fromIdx + 1];
+    if (!from || !to) return;
+    const geo = await computeSegmentGeometry(from.pos, to.pos, patch.transport);
+    const seg: RouteSegment = {
+      id: `seg-${from.id}-${to.id}-${Date.now()}`,
+      fromId: from.id,
+      toId: to.id,
+      ...patch,
+      geometry: encodeSegmentGeometry(geo.coords),
+      distanceM: geo.distanceM,
+      durationS: geo.durationS,
+    };
+    setSegments((prev) => [
+      ...prev.filter((s) => !(s.fromId === from.id && s.toId === to.id)),
+      seg,
+    ]);
+    toast.success("Segment saved");
+  };
+
+  const deleteSegment = (fromIdx: number) => {
+    const from = stops[fromIdx];
+    const to = stops[fromIdx + 1];
+    if (!from || !to) return;
+    setSegments((prev) => prev.filter((s) => !(s.fromId === from.id && s.toId === to.id)));
+    toast.success("Segment removed");
   };
 
   const stopMarkers: MapMarker[] = useMemo(
@@ -149,8 +222,9 @@ export function CreateTourPlanDialog({ open, onOpenChange, onPublished }: Props)
       routeCoordinates: route.coordinates,
       routeDistanceM: route.distance,
       routeDurationS: route.duration,
+      segments,
     };
-  }, [stops, route]);
+  }, [stops, route, segments]);
 
   const onContinue = () => {
     if (stops.length < 2) {
@@ -176,7 +250,7 @@ export function CreateTourPlanDialog({ open, onOpenChange, onPublished }: Props)
               <Upload className="h-4 w-4" /> Plan your journey
             </DialogTitle>
             <DialogDescription>
-              Build a complete multi-stop journey — search places, tap the map, reorder, and publish.
+              Build a complete multi-stop journey — search places, tap the map, reorder, choose transport per leg, and publish.
             </DialogDescription>
           </DialogHeader>
 
@@ -225,56 +299,75 @@ export function CreateTourPlanDialog({ open, onOpenChange, onPublished }: Props)
               )}
 
               {stops.length > 0 ? (
-                <ul className="divide-y rounded-md border">
-                  {stops.map((s, i) => (
-                    <li key={i} className="flex items-center gap-2 p-2 text-sm">
-                      <span
-                        className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-                        style={{
-                          background:
-                            i === 0 ? "#16a34a" : i === stops.length - 1 ? "#dc2626" : "#0ea5e9",
-                        }}
-                      >
-                        {i === 0 ? "A" : i === stops.length - 1 ? "B" : i}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setPanTo(s.pos)}
-                        className="min-w-0 flex-1 truncate text-left hover:underline"
-                      >
-                        {s.label}
-                      </button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7"
-                        onClick={() => moveStop(i, -1)}
-                        disabled={i === 0}
-                        aria-label="Move up"
-                      >
-                        <ArrowUp className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7"
-                        onClick={() => moveStop(i, 1)}
-                        disabled={i === stops.length - 1}
-                        aria-label="Move down"
-                      >
-                        <ArrowDown className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7 text-destructive"
-                        onClick={() => removeStop(i)}
-                        aria-label="Remove stop"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    </li>
-                  ))}
+                <ul className="space-y-1.5">
+                  {stops.map((s, i) => {
+                    const seg =
+                      i < stops.length - 1
+                        ? segments.find((sg) => sg.fromId === s.id && sg.toId === stops[i + 1].id) ?? null
+                        : null;
+                    const segMeta = seg ? TRANSPORT_OPTIONS.find((t) => t.type === seg.transport) : null;
+                    const segStyle = seg ? TRANSPORT_STYLE[seg.transport] : null;
+                    return (
+                      <div key={s.id}>
+                        <li className="flex items-center gap-2 rounded-md border p-2 text-sm">
+                          <span
+                            className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+                            style={{
+                              background:
+                                i === 0 ? "#16a34a" : i === stops.length - 1 ? "#dc2626" : "#0ea5e9",
+                            }}
+                          >
+                            {i === 0 ? "A" : i === stops.length - 1 ? "B" : i}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setPanTo(s.pos)}
+                            className="min-w-0 flex-1 truncate text-left hover:underline"
+                          >
+                            {s.label}
+                          </button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => moveStop(i, -1)} disabled={i === 0} aria-label="Move up">
+                            <ArrowUp className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => moveStop(i, 1)} disabled={i === stops.length - 1} aria-label="Move down">
+                            <ArrowDown className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => removeStop(i)} aria-label="Remove stop">
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </li>
+                        {i < stops.length - 1 && (
+                          <div className="flex items-center gap-2 pl-3 py-1">
+                            <div className="h-4 w-px" style={{ background: segStyle?.color ?? "#cbd5e1" }} />
+                            {seg ? (
+                              <button
+                                type="button"
+                                onClick={() => setSegmentDialogFor({ fromIdx: i })}
+                                className="flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] hover:bg-accent"
+                                style={{ borderColor: segStyle?.color }}
+                              >
+                                <span>{segMeta?.icon}</span>
+                                <span className="font-medium" style={{ color: segStyle?.color }}>
+                                  {segMeta?.label}
+                                </span>
+                                {seg.number && <span className="text-muted-foreground">· {seg.number}</span>}
+                                {seg.departure && <span className="text-muted-foreground">· {seg.departure}</span>}
+                              </button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-6 rounded-full px-2 text-[11px]"
+                                onClick={() => setSegmentDialogFor({ fromIdx: i })}
+                              >
+                                <Plus className="mr-0.5 h-3 w-3" /> Route
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </ul>
               ) : (
                 <p className="rounded-md border border-dashed p-3 text-center text-xs text-muted-foreground">
@@ -292,7 +385,8 @@ export function CreateTourPlanDialog({ open, onOpenChange, onPublished }: Props)
             <div className="space-y-2">
               <SafetyMap
                 markers={stopMarkers}
-                routePolyline={route?.coordinates ?? null}
+                routeSegments={renderableSegments.length ? renderableSegments : null}
+                routePolyline={renderableSegments.length ? null : route?.coordinates ?? null}
                 fitBounds={bounds}
                 fitBoundsEnabled={waypoints.length > 1 || Boolean(panTo)}
                 panTo={panTo}
@@ -318,6 +412,28 @@ export function CreateTourPlanDialog({ open, onOpenChange, onPublished }: Props)
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {segmentDialogFor !== null && stops[segmentDialogFor.fromIdx] && stops[segmentDialogFor.fromIdx + 1] && (
+        <RouteSegmentDialog
+          open={segmentDialogFor !== null}
+          onOpenChange={(v) => { if (!v) setSegmentDialogFor(null); }}
+          fromLabel={stops[segmentDialogFor.fromIdx].label}
+          toLabel={stops[segmentDialogFor.fromIdx + 1].label}
+          existing={
+            segments.find(
+              (s) => s.fromId === stops[segmentDialogFor.fromIdx].id && s.toId === stops[segmentDialogFor.fromIdx + 1].id,
+            ) ?? null
+          }
+          onSave={async (patch) => {
+            await saveSegment(segmentDialogFor.fromIdx, patch);
+            setSegmentDialogFor(null);
+          }}
+          onDelete={async () => {
+            deleteSegment(segmentDialogFor.fromIdx);
+            setSegmentDialogFor(null);
+          }}
+        />
+      )}
 
       <ShareTourDialog
         open={shareOpen}
