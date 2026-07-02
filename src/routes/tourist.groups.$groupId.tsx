@@ -510,13 +510,20 @@ function GroupDetail() {
     else toast.success("Route saved");
   };
 
-  // Persist a segment (geometry computed here) and update local state
+  // Persist a segment (geometry computed here) and update local state.
+  // IMPORTANT: also persist the current `stops` as waypoints — otherwise the
+  // realtime UPDATE listener on tour_groups fires loadGroup() which would
+  // overwrite locally-added-but-unsaved stops with the stale DB waypoints,
+  // making it look like the planner "reset" after choosing a transport mode.
   const persistSegments = async (next: RouteSegment[]) => {
     setSegments(next);
     if (!group) return;
     const { error } = await supabase
       .from("tour_groups")
-      .update({ route_segments: next as unknown as never })
+      .update({
+        route_segments: next as unknown as never,
+        waypoints: stops as unknown as never,
+      })
       .eq("id", group.id);
     if (error) toast.error(error.message);
   };
