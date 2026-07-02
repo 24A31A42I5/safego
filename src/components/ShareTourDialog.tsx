@@ -119,6 +119,7 @@ export function ShareTourDialog({ open, onOpenChange, payload }: Props) {
         route_distance_m: payload.routeDistanceM,
         route_duration_s: payload.routeDurationS,
         tags,
+        route_segments: (payload.segments ?? []) as unknown as never,
       });
       if (error) throw error;
       toast.success("Plan shared with the community 🎉");
