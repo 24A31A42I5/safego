@@ -38,6 +38,7 @@ import {
   computeSegmentGeometry,
   encodeSegmentGeometry,
 } from "@/lib/segments";
+import { JourneyTimeline, type TimelineStop } from "@/components/JourneyTimeline";
 import { toast } from "sonner";
 
 interface Props {
