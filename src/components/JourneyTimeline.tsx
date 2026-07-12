@@ -160,6 +160,36 @@ export function JourneyTimeline({ stops, segments, showDetails = true, renderAct
                     🎒 {r.thingsToCarry}
                   </div>
                 )}
+                {showDetails && r.thingsToDo && (
+                  <div className="mt-1.5 rounded border-l-2 border-sky-500 bg-sky-500/10 px-2 py-1 text-[11px]">
+                    ✨ {r.thingsToDo}
+                  </div>
+                )}
+                {showDetails && Array.isArray(r.tags) && r.tags.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {r.tags.map((tag) => (
+                      <Badge key={tag} variant="outline" className="text-[10px] capitalize">{tag}</Badge>
+                    ))}
+                  </div>
+                )}
+                {showDetails && Array.isArray(r.transportAvailability) && r.transportAvailability.length > 0 && (
+                  <div className="mt-2 space-y-1.5 rounded-md border bg-muted/40 p-2">
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Transport availability
+                    </div>
+                    {r.transportAvailability.map((t) => {
+                      const meta = TRANSPORT_OPTIONS.find((o) => o.type === t.type);
+                      return (
+                        <div key={t.type} className="text-[11px]">
+                          <div className="font-medium">{meta?.icon} {meta?.label}</div>
+                          {t.details && (
+                            <p className="whitespace-pre-wrap text-muted-foreground">{t.details}</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </li>
             {next && <TransportLeg seg={seg} />}
