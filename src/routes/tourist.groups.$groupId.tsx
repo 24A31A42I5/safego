@@ -35,6 +35,7 @@ import { RouteSegmentDialog } from "@/components/RouteSegmentDialog";
 
 import { ShareTourDialog, type ShareTourPayload } from "@/components/ShareTourDialog";
 import { EditStopDialog } from "@/components/EditStopDialog";
+import { JourneyTimeline, type TimelineStop } from "@/components/JourneyTimeline";
 import { GroupJoinRequestsPanel } from "@/components/GroupJoinRequestsPanel";
 import { Share2, Pencil, Link2, Trash2, Loader2 } from "lucide-react";
 import {
