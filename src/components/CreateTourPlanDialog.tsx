@@ -380,6 +380,19 @@ export function CreateTourPlanDialog({ open, onOpenChange, onPublished }: Props)
               <p className="text-[11px] text-muted-foreground">
                 Add per-stop details (photos, tips, cost, warnings) on the next step.
               </p>
+
+              {stops.length >= 2 && (
+                <div className="rounded-md border bg-muted/30 p-3">
+                  <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <RouteIcon className="h-3.5 w-3.5" /> Journey timeline
+                  </div>
+                  <JourneyTimeline
+                    stops={stops.map<TimelineStop>((s) => ({ id: s.id, name: s.label, pos: s.pos }))}
+                    segments={segments}
+                    showDetails={false}
+                  />
+                </div>
+              )}
             </div>
 
             {/* RIGHT — map */}
