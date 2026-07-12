@@ -84,6 +84,7 @@ interface SharedTourRow {
   route_polyline: string | null;
   route_distance_m: number;
   route_duration_s: number;
+  route_segments: RouteSegment[];
   tags: string[];
   images: string[];
   tips: string | null;
