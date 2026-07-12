@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { encodePolyline } from "@/lib/polyline";
 import { Share2, MapPin } from "lucide-react";
 import { TourPhotoUpload } from "@/components/TourPhotoUpload";
+import { JourneyTimeline, type TimelineStop } from "@/components/JourneyTimeline";
 import {
   type RichStop,
   type RouteSegment,
@@ -101,6 +102,25 @@ export function ShareTourDialog({ open, onOpenChange, payload }: Props) {
           transportAvailability: d.transportAvailability.length ? d.transportAvailability : undefined,
         };
       });
+      // Remap segment IDs to positional (p-0..p-N) so the Journey Timeline
+      // can still match them after reload — original planner IDs are not
+      // preserved in the DB stops row.
+      const startPid = "p-0";
+      const destPid = `p-${payload.intermediateStops.length + 1}`;
+      const plannerToPid = new Map<string, string>();
+      const startId = (payload.start as { id?: string }).id;
+      const destId = (payload.destination as { id?: string }).id;
+      if (startId) plannerToPid.set(startId, startPid);
+      if (destId) plannerToPid.set(destId, destPid);
+      payload.intermediateStops.forEach((s, i) => {
+        if (s.id) plannerToPid.set(s.id, `p-${i + 1}`);
+      });
+      const remappedSegments = (payload.segments ?? []).map((s) => ({
+        ...s,
+        fromId: plannerToPid.get(s.fromId) ?? s.fromId,
+        toId: plannerToPid.get(s.toId) ?? s.toId,
+      }));
+
       const { error } = await supabase.from("shared_tours").insert({
         creator_id: user.id,
         creator_name: profile.full_name,
@@ -119,7 +139,7 @@ export function ShareTourDialog({ open, onOpenChange, payload }: Props) {
         route_distance_m: payload.routeDistanceM,
         route_duration_s: payload.routeDurationS,
         tags,
-        route_segments: (payload.segments ?? []) as unknown as never,
+        route_segments: remappedSegments as unknown as never,
       });
       if (error) throw error;
       toast.success("Plan shared with the community 🎉");
@@ -158,6 +178,27 @@ export function ShareTourDialog({ open, onOpenChange, payload }: Props) {
               {(payload.routeDistanceM / 1000).toFixed(1)} km ·{" "}
               {Math.round(payload.routeDurationS / 60)} min
             </div>
+          </div>
+        )}
+
+        {payload && (
+          <div className="rounded-md border bg-card p-3">
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Journey timeline
+            </div>
+            <JourneyTimeline
+              stops={([
+                { id: (payload.start as { id?: string }).id ?? "start", name: payload.start.label, pos: payload.start.pos, isStart: true },
+                ...payload.intermediateStops.map<TimelineStop>((s, i) => ({
+                  id: s.id ?? `stop-${i}`,
+                  name: (stopDrafts[i]?.name?.trim()) || s.label,
+                  pos: s.pos,
+                })),
+                { id: (payload.destination as { id?: string }).id ?? "dest", name: payload.destination.label, pos: payload.destination.pos, isEnd: true },
+              ])}
+              segments={payload.segments}
+              showDetails={false}
+            />
           </div>
         )}
 
