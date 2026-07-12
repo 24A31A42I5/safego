@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { encodePolyline } from "@/lib/polyline";
 import { Share2, MapPin } from "lucide-react";
 import { TourPhotoUpload } from "@/components/TourPhotoUpload";
+import { JourneyTimeline, type TimelineStop } from "@/components/JourneyTimeline";
 import {
   type RichStop,
   type RouteSegment,
