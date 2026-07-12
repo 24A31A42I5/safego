@@ -112,9 +112,14 @@ function normalizeRow(r: Record<string, unknown>): SharedTourRow {
   const stops: Stop[] = Array.isArray(stopsRaw)
     ? (stopsRaw as Stop[]).map((s, i) => ({ ...s, order: typeof s.order === "number" ? s.order : i }))
     : [];
+  const segsRaw = r.route_segments;
+  const route_segments: RouteSegment[] = Array.isArray(segsRaw)
+    ? (segsRaw as unknown[]).map((s) => parseRouteSegment(s)).filter((s): s is RouteSegment => !!s)
+    : [];
   return {
     ...(r as unknown as SharedTourRow),
     stops,
+    route_segments,
     images: Array.isArray(r.images) ? (r.images as string[]) : [],
     tags: Array.isArray(r.tags) ? (r.tags as string[]) : [],
     creator_avatar: (r.creator_avatar as string | null) ?? null,
