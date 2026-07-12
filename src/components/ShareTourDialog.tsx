@@ -162,6 +162,27 @@ export function ShareTourDialog({ open, onOpenChange, payload }: Props) {
           </div>
         )}
 
+        {payload && (
+          <div className="rounded-md border bg-card p-3">
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Journey timeline
+            </div>
+            <JourneyTimeline
+              stops={([
+                { id: (payload.start as { id?: string }).id ?? "start", name: payload.start.label, pos: payload.start.pos, isStart: true },
+                ...payload.intermediateStops.map<TimelineStop>((s, i) => ({
+                  id: s.id ?? `stop-${i}`,
+                  name: (stopDrafts[i]?.name?.trim()) || s.label,
+                  pos: s.pos,
+                })),
+                { id: (payload.destination as { id?: string }).id ?? "dest", name: payload.destination.label, pos: payload.destination.pos, isEnd: true },
+              ])}
+              segments={payload.segments}
+              showDetails={false}
+            />
+          </div>
+        )}
+
         <div className="space-y-3">
           <div className="space-y-1">
             <Label htmlFor="tour-title">Journey title</Label>
