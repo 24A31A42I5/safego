@@ -35,7 +35,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { TRANSPORT_OPTIONS, richStopToGroupStop, type RichStop, type TransportOption } from "@/lib/tour-stop";
+import { TRANSPORT_OPTIONS, richStopToGroupStop, parseRouteSegment, type RichStop, type RouteSegment, type TransportOption } from "@/lib/tour-stop";
+import { JourneyTimeline, type TimelineStop } from "@/components/JourneyTimeline";
 
 export const Route = createFileRoute("/tourist/discover")({
   component: DiscoverPage,
