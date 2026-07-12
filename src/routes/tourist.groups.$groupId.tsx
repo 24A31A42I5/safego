@@ -1060,130 +1060,29 @@ function GroupDetail() {
                 <p className="whitespace-pre-wrap">{group.tips}</p>
               </div>
             )}
-            <ol className="relative space-y-3 border-l-2 border-dashed border-muted pl-5">
-              {stops.map((s, i) => {
-                const isStart = i === 0;
-                const isEnd = i === stops.length - 1;
-                const badge = isStart ? "A" : isEnd ? "B" : `${i}`;
-                const badgeColor = isStart
-                  ? "bg-emerald-600"
-                  : isEnd
-                    ? "bg-red-600"
-                    : "bg-sky-500";
-                return (
-                  <li key={i} className="relative">
-                    <span
-                      className={`absolute -left-[26px] flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white ${badgeColor}`}
-                    >
-                      {badge}
-                    </span>
-                    <div className="rounded-md border bg-card p-2.5">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="text-sm font-semibold">
-                          {isStart ? "Start · " : isEnd ? "Destination · " : ""}
-                          {s.label}
-                        </div>
-                        {user?.id === group?.creator_id && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 gap-1 px-2 text-[11px]"
-                            onClick={() => setEditStopIndex(i)}
-                          >
-                            <Pencil className="h-3 w-3" /> Edit
-                          </Button>
-                        )}
-                      </div>
-                      {(s.detailedDescription || s.shortDescription || s.description) && (
-                        <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">
-                          {s.detailedDescription || s.shortDescription || s.description}
-                        </p>
-                      )}
-                      {Array.isArray(s.images) && s.images.length > 0 && (
-                        <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1">
-                          {s.images.map((src, idx) => (
-                            <img
-                              key={idx}
-                              src={src}
-                              alt={`${s.label} ${idx + 1}`}
-                              loading="lazy"
-                              className="h-20 w-28 shrink-0 rounded object-cover"
-                            />
-                          ))}
-                        </div>
-                      )}
-                      {(s.stayDuration || s.bestTimeToVisit || s.estimatedCost) && (
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          {s.stayDuration && (
-                            <Badge variant="secondary" className="gap-1 text-[10px]">
-                              <Clock className="h-3 w-3" />
-                              {s.stayDuration}
-                            </Badge>
-                          )}
-                          {s.bestTimeToVisit && (
-                            <Badge variant="secondary" className="text-[10px]">
-                              🗓 {s.bestTimeToVisit}
-                            </Badge>
-                          )}
-                          {s.estimatedCost && (
-                            <Badge variant="secondary" className="text-[10px]">
-                              💰 {s.estimatedCost}
-                            </Badge>
-                          )}
-                        </div>
-                      )}
-                      {s.travelTips && (
-                        <div className="mt-2 rounded border-l-2 border-primary/60 bg-primary/5 px-2 py-1 text-[11px]">
-                          💡 {s.travelTips}
-                        </div>
-                      )}
-                      {s.warnings && (
-                        <div className="mt-1.5 rounded border-l-2 border-amber-500 bg-amber-500/10 px-2 py-1 text-[11px]">
-                          ⚠️ {s.warnings}
-                        </div>
-                      )}
-                      {s.thingsToCarry && (
-                        <div className="mt-1.5 rounded border-l-2 border-emerald-500 bg-emerald-500/10 px-2 py-1 text-[11px]">
-                          🎒 {s.thingsToCarry}
-                        </div>
-                      )}
-                      {s.thingsToDo && (
-                        <div className="mt-1.5 rounded border-l-2 border-sky-500 bg-sky-500/10 px-2 py-1 text-[11px]">
-                          ✨ {s.thingsToDo}
-                        </div>
-                      )}
-                      {Array.isArray(s.tags) && s.tags.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {s.tags.map((tag) => <Badge key={tag} variant="outline" className="text-[10px] capitalize">{tag}</Badge>)}
-                        </div>
-                      )}
-                      {Array.isArray(s.transportAvailability) && s.transportAvailability.length > 0 && (
-                        <div className="mt-2 space-y-1.5 rounded-md border bg-muted/40 p-2">
-                          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                            Transport availability
-                          </div>
-                          {s.transportAvailability.map((t) => {
-                            const meta = TRANSPORT_OPTIONS.find((o) => o.type === t.type);
-                            return (
-                              <div key={t.type} className="text-[11px]">
-                                <div className="font-medium">
-                                  {meta?.icon} {meta?.label}
-                                </div>
-                                {t.details && (
-                                  <p className="whitespace-pre-wrap text-muted-foreground">
-                                    {t.details}
-                                  </p>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  </li>
-                );
-              })}
-            </ol>
+            <JourneyTimeline
+              stops={stops.map<TimelineStop>((s, i) => ({
+                id: s.id,
+                name: s.label,
+                pos: s.pos,
+                isStart: i === 0,
+                isEnd: i === stops.length - 1,
+                rich: s,
+              }))}
+              segments={segments}
+              renderAction={(i) =>
+                user?.id === group?.creator_id ? (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 gap-1 px-2 text-[11px]"
+                    onClick={() => setEditStopIndex(i)}
+                  >
+                    <Pencil className="h-3 w-3" /> Edit
+                  </Button>
+                ) : null
+              }
+            />
           </CardContent>
         </Card>
       )}
