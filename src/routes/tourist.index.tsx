@@ -167,8 +167,12 @@ function TouristDashboard() {
   }, [location, routeTo]);
 
   const handleSOS = async () => {
-    if (!user || !profile || !location) {
-      toast.error("Location required for SOS");
+    if (!user || !profile) {
+      toast.error("Sign in required for SOS");
+      return;
+    }
+    if (!location) {
+      toast.error("Location required for SOS — enable GPS and try again");
       return;
     }
     const { error } = await supabase.from("sos_alerts").insert({
@@ -193,16 +197,16 @@ function TouristDashboard() {
           <CardTitle className="flex items-center gap-2">
             <Siren className="h-5 w-5 text-destructive" /> Emergency Center
           </CardTitle>
-          <CardDescription>In case of emergency, use the options below to get help quickly.</CardDescription>
+          <CardDescription>
+            Hold the SOS button for 3 seconds to alert authorities. Accidental taps are ignored.
+          </CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-2 gap-3">
-          <Button
-            onClick={handleSOS}
-            className="h-20 flex-col gap-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
-          >
-            <AlertTriangle className="h-5 w-5" />
-            <span className="text-xs sm:text-sm">SOS</span>
-          </Button>
+          <HoldToSOSButton
+            onTrigger={handleSOS}
+            disabled={!location}
+            label={location ? "Hold to send SOS" : "Waiting for GPS…"}
+          />
           <LostReportDialog />
           <Button variant="outline" className="h-20 flex-col gap-1" asChild>
             <a href={`tel:${profile?.emergency_contact ?? ""}`}>

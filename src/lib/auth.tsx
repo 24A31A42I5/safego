@@ -46,10 +46,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+    let cancelled = false;
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      // Ignore noisy events (TOKEN_REFRESHED fires ~hourly + on tab focus,
+      // INITIAL_SESSION on every mount). Only react to identity transitions.
+      if (
+        event !== "SIGNED_IN" &&
+        event !== "SIGNED_OUT" &&
+        event !== "USER_UPDATED"
+      )
+        return;
+      if (cancelled) return;
       setSession(s);
       if (s?.user) {
-        setTimeout(() => loadProfile(s.user.id), 0);
+        // Defer to avoid deadlock inside the Supabase auth callback.
+        setTimeout(() => {
+          if (!cancelled) loadProfile(s.user.id);
+        }, 0);
       } else {
         setProfile(null);
         setRole(null);
@@ -57,21 +70,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     supabase.auth.getSession().then(({ data }) => {
+      if (cancelled) return;
       setSession(data.session);
       if (data.session?.user) {
-        loadProfile(data.session.user.id).finally(() => setLoading(false));
+        loadProfile(data.session.user.id).finally(() => {
+          if (!cancelled) setLoading(false);
+        });
       } else {
         setLoading(false);
       }
     });
 
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    // Clear local state first so protected UI unmounts before the 401 storm
+    // that would otherwise follow signOut() as queries retry against a
+    // cleared session.
     setProfile(null);
     setRole(null);
+    setSession(null);
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // Best-effort: even if network fails, local session is cleared above.
+    }
   };
 
   return (
