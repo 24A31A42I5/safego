@@ -20,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { pointInPolygon, polygonCentroid, haversine } from "@/lib/geo";
 import { fetchRoute, formatDistance, formatDuration, type RouteResult } from "@/lib/routing";
 import { toast } from "sonner";
+import { HoldToSOSButton } from "@/components/HoldToSOSButton";
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import {
