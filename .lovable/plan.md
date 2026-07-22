@@ -1,57 +1,70 @@
+# SafeGo Production Hardening — Phased Roadmap
 
-This is a large multi-area request. I'll break it into focused, non-destructive phases. Working planner, routing, realtime, and Leaflet stay untouched.
+You selected **all four priority bundles**. That's ~4-6 turns of focused work. I'll ship them in the order below so each turn produces a working, testable app rather than a half-broken mega-diff. Existing schema, features, and architecture stay intact — every change layers on top.
 
-## Phase 1 — Welcome page hero (`src/routes/index.tsx`)
-- Add auto-rotating background slideshow (5 curated travel images, 5s interval, smooth cross-fade).
-- Layered gradient + dark overlay behind hero text for guaranteed contrast.
-- Stronger typographic hierarchy, premium feel, mobile-tuned spacing.
-- Images: stock travel photos uploaded via `lovable-assets` (mountains, beach, heritage, scenic, city).
+---
 
-## Phase 2 — Group invite + approval system (CRITICAL)
+## Turn 1 — Audit & Real-Logic Fixes (Phases 1 + 2)
 
-### DB migration
-- Add `group_code TEXT UNIQUE` to `tour_groups` (backfilled from `invite_code` with `SG-XXXXX` format).
-- New table `group_join_requests` with `id, group_id, requester_id, requester_name, status (pending|approved|rejected), created_at, decided_at, decided_by`.
-- RLS:
-  - Requester can insert/select their own request.
-  - Group creator (admin) can select/update requests for groups they own.
-- GRANTs to authenticated + service_role.
+**Correctness pass, no new surface area.** Highest-impact turn.
 
-### Routes
-- New `src/routes/tourist.groups.join.$groupId.tsx` — public-ish join landing page:
-  - Fetches group preview (name, cover, member count, creator, journey preview).
-  - If already member → redirect into group.
-  - If pending request → show "Pending admin approval".
-  - Else → "Request to Join" / "Cancel" buttons.
-- New `src/routes/tourist.groups.find.tsx` — Join-by-code page (search `SG-XXXXX`, preview, request join).
-- Update `tourist.groups.index.tsx`:
-  - "Join" dialog now routes to the find-by-code page.
-  - Add "Copy invite link" helper using new `/tourist/groups/join/:id` URL.
+- **Auth**: verify session restore path, ensure `signOut` cancels queries + clears cache + `replace`-navigates, tighten protected-route redirects, kill any stale `getSession`/`getUser` mixups.
+- **Tour planning**: confirm OSRM-only geometry everywhere (no straight-line fallbacks), stable stop IDs, orphan-segment pruning on reorder/delete, prevent realtime-listener state stomp (already fixed for groups — audit Discover creator too).
+- **Live tracking**: add marker interpolation (smooth lerp between GPS pings), show heading/speed/accuracy/last-updated on member popups, dedupe subscriptions, throttle writes to `member_locations`.
+- **Groups**: verify invite → join-request → approval → membership → realtime sync end-to-end; fix any RLS gaps surfaced by the audit.
+- **Safety zones**: on every location tick, run enter/exit detection, fire notification, persist history row (add `zone_events` if missing).
+- **SOS hardening**: replace instant-fire with **3-second press-and-hold** + haptic confirmation + countdown-to-cancel.
+- **General**: hunt dead code, duplicate fetchers, missing `useEffect` cleanup, missing error boundaries on routes with loaders.
 
-### Group detail (`tourist.groups.$groupId.tsx`)
-- Add "Join Requests" panel visible only to creator (admin).
-- Approve → insert into `tour_group_members`, mark request approved.
-- Reject → mark rejected.
-- Show group_code prominently with copy button + shareable link.
+**Deliverable**: everything that exists today works correctly and defensively.
 
-## Phase 3 — Mobile-first + UX polish (light pass, no logic changes)
-- Audit `tourist.groups.$groupId.tsx`, `tourist.discover.tsx`, `tourist.index.tsx` for mobile overflow; stack planner/map, larger touch targets (min 44px), collapsible sections where already present.
-- Replace blank loading states with shadcn `Skeleton` blocks on Discover feed + Groups list + Group detail.
-- Friendly empty states (icon + message + CTA) for: no groups, no discover results, no comments, no join requests.
-- Consistent toast feedback for join request, copy invite, approve/reject, publish.
+---
 
-## Phase 4 — Safety net
-- Keep ShareTourDialog working but switch its share link to `/tourist/groups/join/:id`.
-- No changes to: routing engine, Leaflet maps, realtime member_locations, planner logic, Discover ↔ Group conversion.
+## Turn 2 — One-Tap Emergency Center (Phase 5)
 
-## Technical notes
-- Group code format: `SG-` + 5 uppercase alphanumerics, generated SQL-side via trigger using `upper(substring(md5(random()::text) from 1 for 5))` with uniqueness retry.
-- Approval flow uses RLS, not edge functions — keeps stack simple.
-- All new UI uses existing semantic tokens (no hardcoded colors).
+- Floating SOS FAB visible across authenticated routes (respects Live Mode).
+- Full-screen `/tourist/emergency` route: big hold-to-activate button, countdown, live map, address (reverse geocode), coordinates, trip context (destination/ETA/route), battery %, network status, GPS accuracy, nearby group members, quick-dial cards (Police 100 / Ambulance 108 / Fire 101 — India defaults, configurable).
+- **Public tracking link** (`/track/{sessionId}`) — read-only page showing live location + trip info, powered by a new `emergency_sessions` table. Copy/native-share buttons.
+- Session auto-refreshes location every 10 s while active, ends on user cancel.
 
-## Out of scope (explicit)
-- Push notifications (toasts only; in-app notification panel can come later).
-- Email invites.
-- Rewriting planner or map components.
+**New table**: `emergency_sessions` (id, user_id, started_at, ended_at, share_token, last_lat, last_lng, battery, speed, trip_snapshot jsonb) + RLS (owner writes, `share_token` grants anon read of safe columns via RPC).
 
-Once you approve, I'll start with the DB migration (Phase 2 schema) since other code depends on it, then build the UI in parallel batches.
+---
+
+## Turn 3 — Welcome Redesign + UI Polish (Phases 6 + 7)
+
+- Full-viewport hero with rotating high-res travel wallpapers (mountains / beach / forest / waterfall / road-trip / night-sky), Ken Burns zoom, gradient overlay, per-slide adaptive headline+CTA, indicators + manual controls.
+- Glassmorphism quick-action panel: Plan Trip · Explore · Nearby · Group Tours · Emergency.
+- Sitewide polish: consistent card/shadow/radius tokens, skeleton loaders, empty states, animated route transitions, dashboard visual refresh, better mobile bottom-nav spacing.
+
+Landing page kept SEO-friendly (unchanged head metadata, semantic H1).
+
+---
+
+## Turn 4 — Offline Maps + Notification Center (Phases 3 + 4)
+
+- **Offline tiles**: IndexedDB store, "Download current view" and "Download tour route" with size estimate + 200 MB cap, manage/delete downloaded regions, custom Leaflet tile layer that reads IDB first then network. Auto-detect `navigator.onLine`, show "Offline" banner, keep GPS + zones + downloaded POIs working. On reconnect: sync queued incident reports, show "Back Online" toast.
+- **Notification center**: bell in header with unread badge, slide-out panel, animated cards (icon + title + desc + action + timestamp + priority color). Categories: Safety, Weather, Incidents, Travel, System. Backed by a new `notifications` table + realtime subscription. Existing zone/separation/SOS events pipe into it.
+
+---
+
+## Deferred (call out later if wanted)
+
+- **Phase 8 map upgrades** beyond what Turn 1 already touches (clustering, traffic/weather overlays).
+- **Phase 9 AI expansion** (weather-aware planning, unsafe-area warnings).
+- **Phase 10 perf pass** (Lighthouse ≥95 targets — needs a dedicated turn after feature work settles).
+- **Real SMS/WhatsApp** for emergency contacts (per your answer: link-only for now).
+
+---
+
+## Ground rules for every turn
+
+1. No schema deletions. Only additive migrations, each with GRANTs + RLS.
+2. Semantic tokens only — no hard-coded colors.
+3. Every new route: unique `head()`, error + not-found boundaries.
+4. Every new realtime channel: cleanup on unmount.
+5. After each turn: quick smoke-test via preview, then hand back for you to try.
+
+---
+
+**Reply "go" and I'll start Turn 1 (Audit & Fixes).** If you want to reorder turns or drop one, tell me now.
