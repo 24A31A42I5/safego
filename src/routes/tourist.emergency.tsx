@@ -347,11 +347,9 @@ function EmergencyRoute() {
           <div className="pt-2 text-xs text-muted-foreground">
             Emergency contact:{" "}
             {profile?.emergency_contact ? (
-              <Link to="." asChild>
-                <a href={`tel:${profile.emergency_contact}`} className="font-medium text-foreground">
-                  {profile.emergency_contact}
-                </a>
-              </Link>
+              <a href={`tel:${profile.emergency_contact}`} className="font-medium text-foreground">
+                {profile.emergency_contact}
+              </a>
             ) : (
               <span className="italic">not set — add in profile</span>
             )}
