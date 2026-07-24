@@ -5,6 +5,7 @@ import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { LogOut, Home, Users, Menu, Compass } from "lucide-react";
+import { SOSFab } from "@/components/SOSFab";
 
 export const Route = createFileRoute("/tourist")({
   head: () => ({
@@ -134,6 +135,7 @@ function TouristLayout() {
           </div>
         </main>
       </div>
+      <SOSFab />
     </div>
   );
 }

@@ -17,7 +17,9 @@ import { Route as DepartmentRouteImport } from './routes/department'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TouristIndexRouteImport } from './routes/tourist.index'
 import { Route as DepartmentIndexRouteImport } from './routes/department.index'
+import { Route as TrackTokenRouteImport } from './routes/track.$token'
 import { Route as TouristGroupsRouteImport } from './routes/tourist.groups'
+import { Route as TouristEmergencyRouteImport } from './routes/tourist.emergency'
 import { Route as TouristDiscoverRouteImport } from './routes/tourist.discover'
 import { Route as DepartmentZonesRouteImport } from './routes/department.zones'
 import { Route as DepartmentSosRouteImport } from './routes/department.sos'
@@ -69,9 +71,19 @@ const DepartmentIndexRoute = DepartmentIndexRouteImport.update({
   path: '/',
   getParentRoute: () => DepartmentRoute,
 } as any)
+const TrackTokenRoute = TrackTokenRouteImport.update({
+  id: '/track/$token',
+  path: '/track/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TouristGroupsRoute = TouristGroupsRouteImport.update({
   id: '/groups',
   path: '/groups',
+  getParentRoute: () => TouristRoute,
+} as any)
+const TouristEmergencyRoute = TouristEmergencyRouteImport.update({
+  id: '/emergency',
+  path: '/emergency',
   getParentRoute: () => TouristRoute,
 } as any)
 const TouristDiscoverRoute = TouristDiscoverRouteImport.update({
@@ -139,7 +151,9 @@ export interface FileRoutesByFullPath {
   '/department/sos': typeof DepartmentSosRoute
   '/department/zones': typeof DepartmentZonesRoute
   '/tourist/discover': typeof TouristDiscoverRoute
+  '/tourist/emergency': typeof TouristEmergencyRoute
   '/tourist/groups': typeof TouristGroupsRouteWithChildren
+  '/track/$token': typeof TrackTokenRoute
   '/department/': typeof DepartmentIndexRoute
   '/tourist/': typeof TouristIndexRoute
   '/tourist/groups/$groupId': typeof TouristGroupsGroupIdRoute
@@ -158,6 +172,8 @@ export interface FileRoutesByTo {
   '/department/sos': typeof DepartmentSosRoute
   '/department/zones': typeof DepartmentZonesRoute
   '/tourist/discover': typeof TouristDiscoverRoute
+  '/tourist/emergency': typeof TouristEmergencyRoute
+  '/track/$token': typeof TrackTokenRoute
   '/department': typeof DepartmentIndexRoute
   '/tourist': typeof TouristIndexRoute
   '/tourist/groups/$groupId': typeof TouristGroupsGroupIdRoute
@@ -179,7 +195,9 @@ export interface FileRoutesById {
   '/department/sos': typeof DepartmentSosRoute
   '/department/zones': typeof DepartmentZonesRoute
   '/tourist/discover': typeof TouristDiscoverRoute
+  '/tourist/emergency': typeof TouristEmergencyRoute
   '/tourist/groups': typeof TouristGroupsRouteWithChildren
+  '/track/$token': typeof TrackTokenRoute
   '/department/': typeof DepartmentIndexRoute
   '/tourist/': typeof TouristIndexRoute
   '/tourist/groups/$groupId': typeof TouristGroupsGroupIdRoute
@@ -202,7 +220,9 @@ export interface FileRouteTypes {
     | '/department/sos'
     | '/department/zones'
     | '/tourist/discover'
+    | '/tourist/emergency'
     | '/tourist/groups'
+    | '/track/$token'
     | '/department/'
     | '/tourist/'
     | '/tourist/groups/$groupId'
@@ -221,6 +241,8 @@ export interface FileRouteTypes {
     | '/department/sos'
     | '/department/zones'
     | '/tourist/discover'
+    | '/tourist/emergency'
+    | '/track/$token'
     | '/department'
     | '/tourist'
     | '/tourist/groups/$groupId'
@@ -241,7 +263,9 @@ export interface FileRouteTypes {
     | '/department/sos'
     | '/department/zones'
     | '/tourist/discover'
+    | '/tourist/emergency'
     | '/tourist/groups'
+    | '/track/$token'
     | '/department/'
     | '/tourist/'
     | '/tourist/groups/$groupId'
@@ -257,6 +281,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TouristRoute: typeof TouristRouteWithChildren
+  TrackTokenRoute: typeof TrackTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -317,11 +342,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DepartmentIndexRouteImport
       parentRoute: typeof DepartmentRoute
     }
+    '/track/$token': {
+      id: '/track/$token'
+      path: '/track/$token'
+      fullPath: '/track/$token'
+      preLoaderRoute: typeof TrackTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tourist/groups': {
       id: '/tourist/groups'
       path: '/groups'
       fullPath: '/tourist/groups'
       preLoaderRoute: typeof TouristGroupsRouteImport
+      parentRoute: typeof TouristRoute
+    }
+    '/tourist/emergency': {
+      id: '/tourist/emergency'
+      path: '/emergency'
+      fullPath: '/tourist/emergency'
+      preLoaderRoute: typeof TouristEmergencyRouteImport
       parentRoute: typeof TouristRoute
     }
     '/tourist/discover': {
@@ -439,12 +478,14 @@ const TouristGroupsRouteWithChildren = TouristGroupsRoute._addFileChildren(
 
 interface TouristRouteChildren {
   TouristDiscoverRoute: typeof TouristDiscoverRoute
+  TouristEmergencyRoute: typeof TouristEmergencyRoute
   TouristGroupsRoute: typeof TouristGroupsRouteWithChildren
   TouristIndexRoute: typeof TouristIndexRoute
 }
 
 const TouristRouteChildren: TouristRouteChildren = {
   TouristDiscoverRoute: TouristDiscoverRoute,
+  TouristEmergencyRoute: TouristEmergencyRoute,
   TouristGroupsRoute: TouristGroupsRouteWithChildren,
   TouristIndexRoute: TouristIndexRoute,
 }
@@ -459,6 +500,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TouristRoute: TouristRouteWithChildren,
+  TrackTokenRoute: TrackTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

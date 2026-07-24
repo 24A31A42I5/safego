@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      emergency_sessions: {
+        Row: {
+          accuracy: number | null
+          address: string | null
+          battery: number | null
+          ended_at: string | null
+          heading: number | null
+          id: string
+          last_lat: number | null
+          last_lng: number | null
+          share_token: string
+          speed: number | null
+          started_at: string
+          trip_snapshot: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accuracy?: number | null
+          address?: string | null
+          battery?: number | null
+          ended_at?: string | null
+          heading?: number | null
+          id?: string
+          last_lat?: number | null
+          last_lng?: number | null
+          share_token?: string
+          speed?: number | null
+          started_at?: string
+          trip_snapshot?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accuracy?: number | null
+          address?: string | null
+          battery?: number | null
+          ended_at?: string | null
+          heading?: number | null
+          id?: string
+          last_lat?: number | null
+          last_lng?: number | null
+          share_token?: string
+          speed?: number | null
+          started_at?: string
+          trip_snapshot?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       group_join_requests: {
         Row: {
           created_at: string
@@ -598,6 +649,24 @@ export type Database = {
     }
     Functions: {
       find_group_id_by_code: { Args: { _code: string }; Returns: string }
+      get_emergency_session_by_token: {
+        Args: { _token: string }
+        Returns: {
+          accuracy: number
+          address: string
+          battery: number
+          ended_at: string
+          full_name: string
+          heading: number
+          id: string
+          last_lat: number
+          last_lng: number
+          speed: number
+          started_at: string
+          trip_snapshot: Json
+          updated_at: string
+        }[]
+      }
       get_group_preview: {
         Args: { _group_id: string }
         Returns: {
