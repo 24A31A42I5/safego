@@ -93,8 +93,7 @@ function TrackRoute() {
       ? [
           {
             id: "user",
-            lat: data.last_lat,
-            lng: data.last_lng,
+            pos: [data.last_lat, data.last_lng] as [number, number],
             label: data.full_name ?? "Traveler",
             color: "hsl(var(--destructive))",
           },
