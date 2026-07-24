@@ -209,7 +209,7 @@ function EmergencyRoute() {
   };
 
   const markers = location
-    ? [{ id: "me", lat: location[0], lng: location[1], label: "You", color: "hsl(var(--destructive))" }]
+    ? [{ id: "me", pos: location, label: "You", color: "hsl(var(--destructive))" }]
     : [];
 
   return (
