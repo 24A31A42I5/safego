@@ -26,6 +26,8 @@ export interface MapMarker {
   color?: string;
   avatarUrl?: string | null;
   initials?: string;
+  /** "sos" = pulsing red pin, "zone" = amber warning pin */
+  variant?: "sos" | "zone";
 }
 
 export interface RouteSegmentLine {
