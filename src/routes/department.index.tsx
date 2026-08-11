@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/table";
 import type { Database } from "@/integrations/supabase/types";
 import { formatDistanceToNow } from "@/lib/format";
+import { useZoneActivity } from "@/hooks/useZoneActivity";
 import { Phone, MapPin, Siren, AlertTriangle } from "lucide-react";
 
 const searchSchema = z.object({
