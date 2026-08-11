@@ -26,6 +26,8 @@ export interface MapMarker {
   color?: string;
   avatarUrl?: string | null;
   initials?: string;
+  /** "sos" = pulsing red pin, "zone" = amber warning pin */
+  variant?: "sos" | "zone";
 }
 
 export interface RouteSegmentLine {
@@ -119,6 +121,33 @@ function avatarIcon(opts: { avatarUrl?: string | null; initials?: string; color?
   });
 }
 
+const ALERT_MARKER_COLORS = {
+  sos: "#EF4444",
+  zone: "#F59E0B",
+} as const;
+
+/** Teardrop alert pin. SOS pins pulse to signal an active emergency. */
+function alertPinIcon(variant: "sos" | "zone"): L.DivIcon {
+  const color = ALERT_MARKER_COLORS[variant];
+  const pulse =
+    variant === "sos"
+      ? `<span class="safego-pin-pulse" style="border-color:${color};background:${color}33"></span>`
+      : "";
+  return L.divIcon({
+    className: "",
+    iconSize: [30, 42],
+    iconAnchor: [15, 40],
+    popupAnchor: [0, -34],
+    html: `<div class="safego-pin">${pulse}
+      <svg width="30" height="42" viewBox="0 0 30 42" fill="none" xmlns="http://www.w3.org/2000/svg" style="position:relative;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))">
+        <path d="M15 1C7.8 1 2 6.8 2 14c0 9.2 13 27 13 27s13-17.8 13-27C28 6.8 22.2 1 15 1Z" fill="${color}" stroke="#ffffff" stroke-width="2"/>
+        <circle cx="15" cy="14" r="5" fill="#ffffff"/>
+      </svg></div>`,
+  });
+}
+
+
+
 export const SafetyMap = memo(function SafetyMap({
   center = [13.0827, 80.2707], // Chennai default
   zoom = 13,
@@ -211,9 +240,11 @@ export const SafetyMap = memo(function SafetyMap({
         )}
         {markers.map((m) => {
           const useCustom = m.avatarUrl || m.initials || m.color;
-          const iconProp = useCustom
-            ? { icon: avatarIcon({ avatarUrl: m.avatarUrl, initials: m.initials, color: m.color }) }
-            : {};
+          const iconProp = m.variant
+            ? { icon: alertPinIcon(m.variant) }
+            : useCustom
+              ? { icon: avatarIcon({ avatarUrl: m.avatarUrl, initials: m.initials, color: m.color }) }
+              : {};
           return (
             <Marker key={m.id} position={m.pos} {...iconProp}>
               {m.label && <Popup>{m.label}</Popup>}

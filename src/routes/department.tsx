@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { LogOut, Home, Siren, Map, UserSearch, AlertTriangle, Menu } from "lucide-react";
+import { LogOut, Home, Siren, Map, UserSearch, AlertTriangle, Activity, Menu } from "lucide-react";
 
 export const Route = createFileRoute("/department")({
   head: () => ({
@@ -24,6 +24,7 @@ export const Route = createFileRoute("/department")({
 const navItems: { to: string; label: string; icon: typeof Home; exact?: boolean }[] = [
   { to: "/department", label: "Dashboard", icon: Home, exact: true },
   { to: "/department/sos", label: "SOS Reports", icon: Siren },
+  { to: "/department/activity", label: "Active Zone Activity (48h)", icon: Activity },
   { to: "/department/zones", label: "Zone Entry Reports", icon: AlertTriangle },
   { to: "/department/map", label: "Map Management", icon: Map },
   { to: "/department/lost", label: "Lost & Found", icon: UserSearch },

@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/table";
 import type { Database } from "@/integrations/supabase/types";
 import { formatDistanceToNow } from "@/lib/format";
+import { useZoneActivity } from "@/hooks/useZoneActivity";
 import { Phone, MapPin, Siren, AlertTriangle } from "lucide-react";
 
 const searchSchema = z.object({
@@ -51,37 +52,9 @@ type Alert = Database["public"]["Tables"]["sos_alerts"]["Row"];
 
 function DeptHome() {
   const { focusLat, focusLng, focusId } = Route.useSearch();
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [zones, setZones] = useState<Zone[]>([]);
+  const { alerts, zones, sosAlerts, zoneEntries, activeZoneEntries } = useZoneActivity();
   const [panTo, setPanTo] = useState<[number, number] | null>(null);
   const [selected, setSelected] = useState<Alert | null>(null);
-
-  useEffect(() => {
-    const load = async () => {
-      const [{ data: a }, { data: z }] = await Promise.all([
-        supabase
-          .from("sos_alerts")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .limit(50),
-        supabase.from("zones").select("*"),
-      ]);
-      if (a) setAlerts(a);
-      if (z) setZones(z);
-    };
-    load();
-    const ch = supabase
-      .channel("dept-home")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "sos_alerts" },
-        () => load()
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(ch);
-    };
-  }, []);
 
   // Auto-focus map when arriving with focusLat/focusLng search params
   useEffect(() => {
@@ -94,17 +67,26 @@ function DeptHome() {
     }
   }, [focusLat, focusLng, focusId, alerts]);
 
-  const sosAlerts = alerts.filter((a) => a.alert_type === "sos");
-  const zoneAlerts = alerts.filter((a) => a.alert_type === "zone_entry");
+  const zoneAlerts = zoneEntries.map((e) => e.alert);
 
-  const markers = alerts
-    .filter((a) => a.status !== "resolved")
-    .slice(0, 20)
-    .map((a) => ({
-      id: a.id,
-      pos: [a.lat, a.lng] as [number, number],
-      label: `${a.tourist_name} - ${a.alert_type}`,
-    }));
+  // Live map pins: last 48h only. SOS = pulsing red, zone entries = amber and
+  // tracked live until the tourist leaves the zone.
+  const markers = [
+    ...sosAlerts
+      .filter((a) => a.status !== "resolved")
+      .map((a) => ({
+        id: a.id,
+        pos: [a.lat, a.lng] as [number, number],
+        label: `SOS · ${a.tourist_name}`,
+        variant: "sos" as const,
+      })),
+    ...activeZoneEntries.map((e) => ({
+      id: e.alert.id,
+      pos: e.pos,
+      label: `Zone entry · ${e.alert.tourist_name}${e.currentZone ? ` · ${e.currentZone}` : ""}${e.live ? " · live" : ""}`,
+      variant: "zone" as const,
+    })),
+  ].slice(0, 40);
 
   return (
     <div className="space-y-4">
@@ -113,12 +95,23 @@ function DeptHome() {
       <Card>
         <CardHeader>
           <CardTitle>Live Tourist Map</CardTitle>
-          <CardDescription>Real-time location of all active alerts.</CardDescription>
+          <CardDescription>
+            Active alerts from the last 48 hours. Zone entry pins follow the tourist live.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <SafetyMap zones={zones} markers={markers} panTo={panTo} height="380px" />
+          <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[#EF4444]" /> SOS emergency
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#F59E0B]" /> Zone entry (live)
+            </span>
+          </div>
         </CardContent>
       </Card>
+
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
