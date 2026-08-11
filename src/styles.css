@@ -164,3 +164,27 @@
 .leaflet-grab { cursor: grab; }
 .leaflet-dragging .leaflet-grab { cursor: grabbing; }
 .leaflet-interactive { cursor: pointer; }
+
+/* Map alert pins */
+.safego-pin {
+  position: relative;
+  width: 30px;
+  height: 42px;
+}
+.safego-pin-pulse {
+  position: absolute;
+  left: 50%;
+  top: 14px;
+  width: 30px;
+  height: 30px;
+  margin-left: -15px;
+  margin-top: -15px;
+  border-radius: 9999px;
+  border-width: 2px;
+  border-style: solid;
+  animation: safego-pin-pulse 1.6s ease-out infinite;
+}
+@keyframes safego-pin-pulse {
+  0% { transform: scale(0.6); opacity: 0.9; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
