@@ -240,9 +240,11 @@ export const SafetyMap = memo(function SafetyMap({
         )}
         {markers.map((m) => {
           const useCustom = m.avatarUrl || m.initials || m.color;
-          const iconProp = useCustom
-            ? { icon: avatarIcon({ avatarUrl: m.avatarUrl, initials: m.initials, color: m.color }) }
-            : {};
+          const iconProp = m.variant
+            ? { icon: alertPinIcon(m.variant) }
+            : useCustom
+              ? { icon: avatarIcon({ avatarUrl: m.avatarUrl, initials: m.initials, color: m.color }) }
+              : {};
           return (
             <Marker key={m.id} position={m.pos} {...iconProp}>
               {m.label && <Popup>{m.label}</Popup>}
