@@ -512,6 +512,7 @@ function ActiveTourCard() {
         <Link
           to="/tourist/groups/$groupId"
           params={{ groupId: tour.id }}
+          search={{ applyTour: undefined }}
           className="flex items-center gap-3 rounded-md border bg-muted/30 p-3 hover:bg-muted/60"
         >
           {tour.cover_image ? (
