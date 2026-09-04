@@ -1,70 +1,58 @@
-# SafeGo Production Hardening — Phased Roadmap
+# Move SafeGo to your own Supabase account
 
-You selected **all four priority bundles**. That's ~4-6 turns of focused work. I'll ship them in the order below so each turn produces a working, testable app rather than a half-broken mega-diff. Existing schema, features, and architecture stay intact — every change layers on top.
+This is a supported, guided migration. It runs in three stages: you create the new project and hand over its keys, everything (schema, data, files, accounts) is copied across, then the app is re-pointed at your project and verified.
 
----
+## Stage 1 — What you need to provide
 
-## Turn 1 — Audit & Real-Logic Fixes (Phases 1 + 2)
+Create a new project at supabase.com (choose a region close to your users, save the database password shown at creation — it is only shown once).
 
-**Correctness pass, no new surface area.** Highest-impact turn.
+Then collect, from your new project's dashboard:
 
-- **Auth**: verify session restore path, ensure `signOut` cancels queries + clears cache + `replace`-navigates, tighten protected-route redirects, kill any stale `getSession`/`getUser` mixups.
-- **Tour planning**: confirm OSRM-only geometry everywhere (no straight-line fallbacks), stable stop IDs, orphan-segment pruning on reorder/delete, prevent realtime-listener state stomp (already fixed for groups — audit Discover creator too).
-- **Live tracking**: add marker interpolation (smooth lerp between GPS pings), show heading/speed/accuracy/last-updated on member popups, dedupe subscriptions, throttle writes to `member_locations`.
-- **Groups**: verify invite → join-request → approval → membership → realtime sync end-to-end; fix any RLS gaps surfaced by the audit.
-- **Safety zones**: on every location tick, run enter/exit detection, fire notification, persist history row (add `zone_events` if missing).
-- **SOS hardening**: replace instant-fire with **3-second press-and-hold** + haptic confirmation + countdown-to-cancel.
-- **General**: hunt dead code, duplicate fetchers, missing `useEffect` cleanup, missing error boundaries on routes with loaders.
+- Project URL and the publishable/anon key — Settings > API. These are safe to keep in the app.
+- Service role key (secret) — Settings > API. This is powerful; it will be stored in the secure secret store, never in code.
+- Database connection string / password — Settings > Database. Needed to load the data.
+- Project reference id — visible in Settings > General or in the project URL.
 
-**Deliverable**: everything that exists today works correctly and defensively.
+When the plan is approved, a secure form is opened for the secret values so you never paste them into chat.
 
----
+## Stage 2 — Moving everything safely, nothing lost
 
-## Turn 2 — One-Tap Emergency Center (Phase 5)
+Order matters, and nothing is deleted from the current backend at any point — it stays intact as a fallback until you confirm the new one works.
 
-- Floating SOS FAB visible across authenticated routes (respects Live Mode).
-- Full-screen `/tourist/emergency` route: big hold-to-activate button, countdown, live map, address (reverse geocode), coordinates, trip context (destination/ETA/route), battery %, network status, GPS accuracy, nearby group members, quick-dial cards (Police 100 / Ambulance 108 / Fire 101 — India defaults, configurable).
-- **Public tracking link** (`/track/{sessionId}`) — read-only page showing live location + trip info, powered by a new `emergency_sessions` table. Copy/native-share buttons.
-- Session auto-refreshes location every 10 s while active, ends on user cancel.
+1. Schema: all 16 tables, the 3 custom types (roles, alert types, zone types), all 11 database functions, all triggers, and every access rule are recreated from the project's existing migration history (17 migration files already in the repo), so the new database is structurally identical.
+2. User accounts: exported from the current auth store and imported with their existing ids and password hashes, so people keep their logins. Sign-in providers (email, Google) are re-enabled on the new project — Google needs its client id/secret added there.
+3. Table data: exported and re-imported in dependency order (profiles and roles first, then groups, tours, alerts, sessions), preserving all ids so photos, group membership, likes, comments and ratings stay linked.
+4. Files: both storage buckets are recreated with the same names and public/private settings (`tour-photos` public, `lost-photos` private) and all uploaded photos are copied over, then their access rules re-applied.
+5. Verification: row counts per table are compared old vs new, and a checklist of key flows is run.
 
-**New table**: `emergency_sessions` (id, user_id, started_at, ended_at, share_token, last_lat, last_lng, battery, speed, trip_snapshot jsonb) + RLS (owner writes, `share_token` grants anon read of safe columns via RPC).
+## Stage 3 — Changes in the app
 
----
+- The backend address and public key in the environment config are swapped to your project; the secret keys move into the secret store.
+- The AI features (safety chat, tour suggestions) currently use Lovable's built-in AI key. On your own backend, the two AI functions are redeployed to your project, and you either supply your own Google/Gemini API key or keep using the Lovable key value.
+- Realtime is re-enabled for the tables that need it (live member locations, alerts, group updates) — without this, live tracking and separation alerts go quiet.
+- No feature code needs rewriting: every screen talks to the backend through one shared client file, so re-pointing that is enough.
 
-## Turn 3 — Welcome Redesign + UI Polish (Phases 6 + 7)
+## Important trade-offs to know before approving
 
-- Full-viewport hero with rotating high-res travel wallpapers (mountains / beach / forest / waterfall / road-trip / night-sky), Ken Burns zoom, gradient overlay, per-slide adaptive headline+CTA, indicators + manual controls.
-- Glassmorphism quick-action panel: Plan Trip · Explore · Nearby · Group Tours · Emergency.
-- Sitewide polish: consistent card/shadow/radius tokens, skeleton loaders, empty states, animated route transitions, dashboard visual refresh, better mobile bottom-nav spacing.
+- Backend changes after the switch are made through your own Supabase dashboard/SQL rather than the in-app migration approvals.
+- Lovable Cloud cannot be removed from this project afterwards; it simply stops being used.
+- Plan on a short window where you avoid writing new data, so the copy is a clean snapshot.
 
-Landing page kept SEO-friendly (unchanged head metadata, semantic H1).
+## Technical notes
 
----
+- Migration is driven with the managed migration lifecycle (start_migration → record_migration_complete) so the switch is tracked and reversible.
+- Auth users move via `auth.users` export/import with `encrypted_password` preserved; `handle_new_user` trigger is recreated but only fires for future signups.
+- Data load order follows the FK graph: `profiles`, `user_roles` → `tour_groups`, `shared_tours` → `tour_group_members`, `member_locations`, `shared_tour_*`, `group_join_requests` → `sos_alerts`, `zones`, `lost_reports`, `separation_alerts`, `emergency_sessions`.
+- Every `CREATE TABLE` keeps its `GRANT` block for `authenticated`/`service_role` (and `anon` where public reads exist) — otherwise the API returns permission errors even with policies in place.
+- Storage objects are copied bucket-by-bucket with paths preserved so stored URLs in `shared_tours.images`, `tour_groups.cover_image` and `lost_reports.photo_url` keep resolving.
+- `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `VITE_*` equivalents updated; `SUPABASE_SERVICE_ROLE_KEY` rebound server-side only.
 
-## Turn 4 — Offline Maps + Notification Center (Phases 3 + 4)
+## Step order
 
-- **Offline tiles**: IndexedDB store, "Download current view" and "Download tour route" with size estimate + 200 MB cap, manage/delete downloaded regions, custom Leaflet tile layer that reads IDB first then network. Auto-detect `navigator.onLine`, show "Offline" banner, keep GPS + zones + downloaded POIs working. On reconnect: sync queued incident reports, show "Back Online" toast.
-- **Notification center**: bell in header with unread badge, slide-out panel, animated cards (icon + title + desc + action + timestamp + priority color). Categories: Safety, Weather, Incidents, Travel, System. Backed by a new `notifications` table + realtime subscription. Existing zone/separation/SOS events pipe into it.
-
----
-
-## Deferred (call out later if wanted)
-
-- **Phase 8 map upgrades** beyond what Turn 1 already touches (clustering, traffic/weather overlays).
-- **Phase 9 AI expansion** (weather-aware planning, unsafe-area warnings).
-- **Phase 10 perf pass** (Lighthouse ≥95 targets — needs a dedicated turn after feature work settles).
-- **Real SMS/WhatsApp** for emergency contacts (per your answer: link-only for now).
-
----
-
-## Ground rules for every turn
-
-1. No schema deletions. Only additive migrations, each with GRANTs + RLS.
-2. Semantic tokens only — no hard-coded colors.
-3. Every new route: unique `head()`, error + not-found boundaries.
-4. Every new realtime channel: cleanup on unmount.
-5. After each turn: quick smoke-test via preview, then hand back for you to try.
-
----
-
-**Reply "go" and I'll start Turn 1 (Audit & Fixes).** If you want to reorder turns or drop one, tell me now.
+1. You create the project and provide keys.
+2. Schema + functions + triggers + policies applied to your project.
+3. Auth users imported, providers configured.
+4. Table data imported, sequences/counters checked.
+5. Buckets recreated, files copied, storage rules applied.
+6. App re-pointed, realtime enabled, AI functions deployed.
+7. Verification pass: sign in, create a group, join by code, upload a photo, trigger a test SOS, confirm live map updates.
