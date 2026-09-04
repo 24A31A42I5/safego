@@ -587,7 +587,6 @@ function SeparationAlertsCard() {
             key={a.id}
             to="/tourist/groups/$groupId"
             params={{ groupId: a.group_id }}
-            search={{}}
             className="flex items-center justify-between gap-2 rounded-md border bg-muted/30 p-2.5 hover:bg-muted/60"
           >
             <div className="min-w-0">
