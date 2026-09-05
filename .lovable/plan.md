@@ -2,18 +2,15 @@
 
 This is a supported, guided migration. It runs in three stages: you create the new project and hand over its keys, everything (schema, data, files, accounts) is copied across, then the app is re-pointed at your project and verified.
 
-## Stage 1 — What you need to provide
+## Stage 1 — Credentials (provided, verified reachable)
 
-Create a new project at supabase.com (choose a region close to your users, save the database password shown at creation — it is only shown once).
+Your new project (`ziipqtvsvcnrsaonbkoe`) is live and its keys are recognized. Provided:
 
-Then collect, from your new project's dashboard:
+- Project URL and publishable key — will go into the app's environment config (safe to be public).
+- Secret key (`sb_secret_...`) — used as the service-role key; stored only in the secure secret store, never in code.
+- Database connection string — used once to load schema and data.
 
-- Project URL and the publishable/anon key — Settings > API. These are safe to keep in the app.
-- Service role key (secret) — Settings > API. This is powerful; it will be stored in the secure secret store, never in code.
-- Database connection string / password — Settings > Database. Needed to load the data.
-- Project reference id — visible in Settings > General or in the project URL.
-
-When the plan is approved, a secure form is opened for the secret values so you never paste them into chat.
+Security note: the secret key and database password were pasted into chat, so after the migration completes, reset the database password (Settings > Database) and roll the secret key (Settings > API) in your Supabase dashboard. The app will be updated to the new values at that point.
 
 ## Stage 2 — Moving everything safely, nothing lost
 
